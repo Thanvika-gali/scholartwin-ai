@@ -41,6 +41,10 @@ Desktop.ini
 logs/
 *.log
 
+# User Uploads and Storage (Milestone 4)
+uploads/
+
+
 # Maven temporary files
 .mvn/timing.properties
 .mvn/wrapper/maven-wrapper.jar

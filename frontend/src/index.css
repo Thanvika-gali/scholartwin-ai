@@ -1,8 +1,174 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-brand-navy: #0A1828;
+  --color-brand-navy-deep: #07121E;
+  --color-brand-navy-card: #0F2238;
+  --color-brand-navy-card-hover: #142C48;
+  --color-brand-navy-border: #1B3758;
+
+  --color-brand-teal: #178582;
+  --color-brand-teal-hover: #136F6D;
+  --color-brand-teal-light: #1EAAA6;
+  --color-brand-teal-subtle: #1785821A;
+
+  --color-brand-gold: #BFA181;
+  --color-brand-gold-hover: #AB8E70;
+  --color-brand-gold-light: #D4BEA5;
+  --color-brand-gold-subtle: #BFA1811A;
+
+  --color-bg-page: var(--bg-page);
+  --color-bg-sidebar: var(--bg-sidebar);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-surface-elevated: var(--bg-surface-elevated);
+  --color-bg-surface-hover: var(--bg-surface-hover);
+
+  --color-border-subtle: var(--border-subtle);
+  --color-border-default: var(--border-default);
+  --color-border-focus: var(--border-focus);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+
+  --color-status-success: var(--status-success);
+  --color-status-success-bg: var(--status-success-bg);
+  --color-status-success-border: var(--status-success-border);
+  --color-status-success-text: var(--status-success-text);
+
+  --color-status-warning: var(--status-warning);
+  --color-status-warning-bg: var(--status-warning-bg);
+  --color-status-warning-border: var(--status-warning-border);
+  --color-status-warning-text: var(--status-warning-text);
+
+  --color-status-error: var(--status-error);
+  --color-status-error-bg: var(--status-error-bg);
+  --color-status-error-border: var(--status-error-border);
+  --color-status-error-text: var(--status-error-text);
+
+  --color-status-info: var(--status-info);
+  --color-status-info-bg: var(--status-info-bg);
+  --color-status-info-border: var(--status-info-border);
+  --color-status-info-text: var(--status-info-text);
+
+  --shadow-card: var(--shadow-card);
+  --shadow-card-hover: var(--shadow-card-hover);
+  --shadow-modal: var(--shadow-modal);
+}
+
+:root {
+  /* Brand Constants */
+  --brand-navy: #0A1828;
+  --brand-teal: #178582;
+  --brand-gold: #BFA181;
+  --brand-white: #FFFFFF;
+
+  /* Light Theme Surfaces */
+  --bg-page: #F8FAFC;
+  --bg-sidebar: #FFFFFF;
+  --bg-surface: #FFFFFF;
+  --bg-surface-elevated: #F1F5F9;
+  --bg-surface-hover: #E2E8F0;
+
+  /* Light Theme Borders */
+  --border-subtle: #E2E8F0;
+  --border-default: #CBD5E1;
+  --border-focus: #178582;
+
+  /* Light Theme Typography */
+  --text-primary: #0A1828;
+  --text-secondary: #334155;
+  --text-muted: #64748B;
+
+  /* Light Semantic Colors */
+  --status-success: #059669;
+  --status-success-bg: #ECFDF5;
+  --status-success-border: #A7F3D0;
+  --status-success-text: #065F46;
+
+  --status-warning: #D97706;
+  --status-warning-bg: #FFFBEB;
+  --status-warning-border: #FDE68A;
+  --status-warning-text: #92400E;
+
+  --status-error: #DC2626;
+  --status-error-bg: #FEF2F2;
+  --status-error-border: #FECACA;
+  --status-error-text: #991B1B;
+
+  --status-info: #0284C7;
+  --status-info-bg: #F0F9FF;
+  --status-info-border: #BAE6FD;
+  --status-info-text: #0369A1;
+
+  /* Light Shadows */
+  --shadow-card: 0 1px 3px 0 rgb(10 24 40 / 0.05), 0 1px 2px -1px rgb(10 24 40 / 0.05);
+  --shadow-card-hover: 0 4px 6px -1px rgb(10 24 40 / 0.08), 0 2px 4px -2px rgb(10 24 40 / 0.06);
+  --shadow-modal: 0 20px 25px -5px rgb(10 24 40 / 0.15), 0 8px 10px -6px rgb(10 24 40 / 0.1);
+}
+
+.dark {
+  /* Dark Theme Surfaces */
+  --bg-page: #0A1828;
+  --bg-sidebar: #07121E;
+  --bg-surface: #0F2238;
+  --bg-surface-elevated: #142C48;
+  --bg-surface-hover: #193658;
+
+  /* Dark Theme Borders */
+  --border-subtle: #162C46;
+  --border-default: #1B3758;
+  --border-focus: #178582;
+
+  /* Dark Theme Typography */
+  --text-primary: #FFFFFF;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+
+  /* Dark Semantic Colors */
+  --status-success: #10B981;
+  --status-success-bg: #064E3B33;
+  --status-success-border: #065F4680;
+  --status-success-text: #6EE7B7;
+
+  --status-warning: #F59E0B;
+  --status-warning-bg: #78350F33;
+  --status-warning-border: #92400E80;
+  --status-warning-text: #FCD34D;
+
+  --status-error: #EF4444;
+  --status-error-bg: #7F1D1D33;
+  --status-error-border: #991B1B80;
+  --status-error-text: #FCA5A5;
+
+  --status-info: #38BDF8;
+  --status-info-bg: #0C4A6E33;
+  --status-info-border: #0369A180;
+  --status-info-text: #7DD3FC;
+
+  /* Dark Shadows */
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.3), 0 1px 2px -1px rgb(0 0 0 / 0.3);
+  --shadow-card-hover: 0 6px 16px -2px rgb(0 0 0 / 0.4), 0 2px 6px -2px rgb(0 0 0 / 0.3);
+  --shadow-modal: 0 25px 50px -12px rgb(0 0 0 / 0.7);
+}
+
 @layer base {
+  * {
+    border-color: var(--border-subtle);
+  }
+
   body {
-    @apply antialiased bg-slate-950 text-slate-100 min-h-screen selection:bg-indigo-500/30 selection:text-indigo-200;
+    background-color: var(--bg-page);
+    color: var(--text-primary);
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    min-height: 100vh;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  ::selection {
+    background-color: rgba(23, 133, 130, 0.25);
+    color: #178582;
   }
 }

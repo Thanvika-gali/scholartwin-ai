@@ -12,6 +12,9 @@ export default defineConfig(({ mode }) => {
       react(),
       tailwindcss(),
     ],
+    test: {
+      environment: 'jsdom',
+    },
     server: {
       port: 5173,
       proxy: {
