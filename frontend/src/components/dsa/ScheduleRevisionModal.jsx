@@ -72,8 +72,24 @@ export default function ScheduleRevisionModal({
           />
         </svg>
       }
+      footer={
+        <div className="flex items-center justify-end gap-3 w-full">
+          <Button variant="ghost" onClick={onClose} disabled={isSaving} size="sm">
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            type="submit"
+            form="schedule-dsa-revision-form"
+            isLoading={isSaving}
+            size="sm"
+          >
+            Queue Revision
+          </Button>
+        </div>
+      }
     >
-      <form onSubmit={handleSubmit} className="p-6 space-y-4">
+      <form id="schedule-dsa-revision-form" onSubmit={handleSubmit} className="space-y-4">
         {/* Quick Date Presets */}
         <div>
           <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">
@@ -88,9 +104,9 @@ export default function ScheduleRevisionModal({
                   key={preset.label}
                   type="button"
                   onClick={() => setForm({ ...form, scheduledDate: targetDate })}
-                  className={`text-xs px-3 py-1.5 rounded-lg border font-medium transition-all cursor-pointer ${
+                  className={`text-xs px-2.5 py-1.5 rounded-lg border font-medium transition-all cursor-pointer ${
                     isSelected
-                      ? 'bg-brand-teal text-white border-brand-teal'
+                      ? 'bg-brand-teal text-white border-brand-teal shadow-xs'
                       : 'bg-bg-surface-elevated text-text-secondary border-border-default hover:text-text-primary hover:border-brand-teal/40'
                   }`}
                 >
@@ -101,7 +117,7 @@ export default function ScheduleRevisionModal({
           </div>
         </div>
 
-        {/* Scheduled Date Input */}
+        {/* Date Input */}
         <Input
           label="Target Revision Date *"
           type="date"
@@ -112,31 +128,20 @@ export default function ScheduleRevisionModal({
           required
         />
 
-        {/* Revision Notes */}
+        {/* Notes */}
         <div>
           <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">
-            Revision Focus / Prompts (Optional)
+            Focus Areas / Pattern Prompts
           </label>
           <textarea
-            rows={3}
+            rows={2}
             value={form.revisionNotes}
             onChange={(e) => setForm({ ...form, revisionNotes: e.target.value })}
-            placeholder="e.g. Try to write clean code without looking at previous solution; check boundary case when N=0..."
-            className="w-full bg-bg-surface-elevated border border-border-default rounded-xl p-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-teal resize-y"
+            placeholder="Focus on two-pointer optimization, recurrence relation, or space reduction..."
+            className="w-full bg-bg-surface border border-border-default rounded-xl p-2.5 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-brand-teal resize-y"
           />
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-3 pt-3 border-t border-border-subtle">
-          <Button variant="ghost" onClick={onClose} disabled={isSaving}>
-            Cancel
-          </Button>
-          <Button variant="primary" type="submit" isLoading={isSaving}>
-            Add to Queue
-          </Button>
         </div>
       </form>
     </Modal>
   );
 }
-

@@ -98,8 +98,18 @@ export default function EditExtractedDataModal({ isOpen, onClose, onSuccess, res
           />
         </svg>
       }
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={isLoading}>
+            Cancel
+          </Button>
+          <Button type="submit" form="edit-extracted-data-form" variant="primary" isLoading={isLoading}>
+            Save Changes
+          </Button>
+        </>
+      }
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form id="edit-extracted-data-form" onSubmit={handleSubmit} className="space-y-4">
         {error && (
           <Alert variant="error" dismissible onDismiss={() => setError(null)}>
             {error}
@@ -190,15 +200,6 @@ export default function EditExtractedDataModal({ isOpen, onClose, onSuccess, res
             placeholder="Java, Spring Boot, MySQL, React, Docker..."
             className="w-full px-3.5 py-2 rounded-xl bg-bg-surface-elevated border border-border-default text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal resize-none"
           />
-        </div>
-
-        <div className="flex justify-end gap-3 pt-3 border-t border-border-subtle">
-          <Button variant="secondary" onClick={onClose} disabled={isLoading}>
-            Cancel
-          </Button>
-          <Button type="submit" variant="primary" isLoading={isLoading}>
-            Save Changes
-          </Button>
         </div>
       </form>
     </Modal>

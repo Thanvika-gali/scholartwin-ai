@@ -115,8 +115,18 @@ export default function AddEditActionModal({ isOpen, onClose, onSuccess, initial
           />
         </svg>
       }
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={isLoading}>
+            Cancel
+          </Button>
+          <Button type="submit" form="add-edit-action-form" variant="primary" isLoading={isLoading}>
+            {isEdit ? 'Save Action' : 'Create Action'}
+          </Button>
+        </>
+      }
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form id="add-edit-action-form" onSubmit={handleSubmit} className="space-y-4">
         {error && (
           <Alert variant="error" dismissible onDismiss={() => setError(null)}>
             {error}
@@ -229,15 +239,6 @@ export default function AddEditActionModal({ isOpen, onClose, onSuccess, initial
             </select>
           </div>
         )}
-
-        <div className="flex justify-end gap-3 pt-3 border-t border-border-subtle">
-          <Button variant="secondary" onClick={onClose} disabled={isLoading}>
-            Cancel
-          </Button>
-          <Button type="submit" variant="primary" isLoading={isLoading}>
-            {isEdit ? 'Save Action' : 'Create Action'}
-          </Button>
-        </div>
       </form>
     </Modal>
   );

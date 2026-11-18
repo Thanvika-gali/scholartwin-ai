@@ -487,31 +487,33 @@ export default function ProfilePage() {
 
       {/* Layout Grid: Sidebar Navigation + Settings Main Panel */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
-        {/* Desktop Sidebar Navigation */}
-        <aside className="lg:col-span-1 space-y-1 bg-bg-surface p-3 rounded-2xl border border-border-default shadow-sm">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted px-3 py-1.5 block">
+        {/* Navigation: Responsive Horizontal Tab Bar on mobile, Sidebar on lg */}
+        <aside className="lg:col-span-1 bg-bg-surface p-2 sm:p-3 rounded-2xl border border-border-default shadow-sm">
+          <span className="hidden lg:block text-[10px] font-bold uppercase tracking-wider text-text-muted px-3 py-1.5 mb-1">
             Account & Settings
           </span>
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => {
-                setActiveTab(item.id);
-                setSuccessMessage('');
-                setErrorMessage('');
-              }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all text-left cursor-pointer ${
-                activeTab === item.id
-                  ? 'bg-brand-navy text-brand-gold shadow-sm border border-brand-teal/40'
-                  : 'text-text-secondary hover:bg-bg-surface-elevated hover:text-text-primary'
-              }`}
-            >
-              <span className={activeTab === item.id ? 'text-brand-gold' : 'text-brand-teal'}>
-                {item.icon}
-              </span>
-              <span>{item.label}</span>
-            </button>
-          ))}
+          <div className="flex lg:flex-col overflow-x-auto lg:overflow-visible gap-1 scrollbar-none pb-1 lg:pb-0">
+            {navItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setActiveTab(item.id);
+                  setSuccessMessage('');
+                  setErrorMessage('');
+                }}
+                className={`flex items-center gap-2 lg:gap-3 px-3 py-2 lg:py-2.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap cursor-pointer shrink-0 lg:shrink ${
+                  activeTab === item.id
+                    ? 'bg-brand-navy text-brand-gold shadow-sm border border-brand-teal/40'
+                    : 'text-text-secondary hover:bg-bg-surface-elevated hover:text-text-primary border border-transparent'
+                }`}
+              >
+                <span className={activeTab === item.id ? 'text-brand-gold' : 'text-brand-teal'}>
+                  {item.icon}
+                </span>
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </div>
         </aside>
 
         {/* Main Settings Panel */}
@@ -1193,7 +1195,7 @@ export default function ProfilePage() {
 
                 <div className="flex justify-end pt-2">
                   <Button
-                    variant="error"
+                    variant="destructive"
                     size="sm"
                     onClick={() => {
                       setDeleteConfirmationText('');
@@ -1216,12 +1218,8 @@ export default function ProfilePage() {
         title="Sign Out of AI ScholarTwin"
         subtitle="Are you sure you want to log out of this session?"
         maxWidth="max-w-md"
-      >
-        <div className="space-y-4 py-2">
-          <p className="text-xs text-text-secondary leading-relaxed">
-            Your saved knowledge notes, study targets, and practice progress will remain securely saved.
-          </p>
-          <div className="flex justify-end gap-3 pt-3 border-t border-border-subtle">
+        footer={
+          <>
             <Button variant="secondary" onClick={() => setIsLogoutModalOpen(false)}>
               Cancel
             </Button>
@@ -1234,8 +1232,12 @@ export default function ProfilePage() {
             >
               Sign Out
             </Button>
-          </div>
-        </div>
+          </>
+        }
+      >
+        <p className="text-xs text-text-secondary leading-relaxed py-2">
+          Your saved knowledge notes, study targets, and practice progress will remain securely saved.
+        </p>
       </Modal>
 
       {/* Account Deletion Confirmation Modal */}
@@ -1245,6 +1247,21 @@ export default function ProfilePage() {
         title="Confirm Irreversible Account Deletion"
         subtitle="This action cannot be undone"
         maxWidth="max-w-md"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              isLoading={isDeletingAccount}
+              disabled={deleteConfirmationText !== 'DELETE MY ACCOUNT' || isDeletingAccount}
+              onClick={handleDeleteAccount}
+            >
+              Permanently Delete
+            </Button>
+          </>
+        }
       >
         <div className="space-y-4 py-2">
           <p className="text-xs text-text-secondary leading-relaxed">
@@ -1257,19 +1274,6 @@ export default function ProfilePage() {
             placeholder="DELETE MY ACCOUNT"
             required
           />
-          <div className="flex justify-end gap-3 pt-3 border-t border-border-subtle">
-            <Button variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="error"
-              isLoading={isDeletingAccount}
-              disabled={deleteConfirmationText !== 'DELETE MY ACCOUNT' || isDeletingAccount}
-              onClick={handleDeleteAccount}
-            >
-              Permanently Delete
-            </Button>
-          </div>
         </div>
       </Modal>
     </div>

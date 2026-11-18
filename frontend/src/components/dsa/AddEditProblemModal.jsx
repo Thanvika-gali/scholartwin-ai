@@ -36,7 +36,6 @@ export default function AddEditProblemModal({
   });
 
   const [errors, setErrors] = useState({});
-  const [topicInput, setTopicInput] = useState('');
 
   useEffect(() => {
     if (initialData) {
@@ -115,22 +114,33 @@ export default function AddEditProblemModal({
       title={isEditing ? 'Edit DSA Problem' : 'Track New DSA Problem'}
       subtitle={
         isEditing
-          ? 'Update algorithmic problem specifications and personal insights'
-          : 'Log a new coding problem from LeetCode, GFG, or other competitive platforms'
+          ? 'Update algorithmic specifications, complexity invariants, and personal notes'
+          : 'Log a new coding problem with topic tags and spaced repetition tracking'
       }
       maxWidth="max-w-2xl"
       icon={
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
-          />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
         </svg>
       }
+      footer={
+        <div className="flex items-center justify-end gap-3 w-full">
+          <Button variant="ghost" onClick={onClose} disabled={isSaving} size="sm">
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            type="submit"
+            form="add-edit-dsa-form"
+            isLoading={isSaving}
+            size="sm"
+          >
+            {isEditing ? 'Save Changes' : 'Track Problem'}
+          </Button>
+        </div>
+      }
     >
-      <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto max-h-[75vh]">
+      <form id="add-edit-dsa-form" onSubmit={handleSubmit} className="space-y-4">
         {/* Title */}
         <Input
           label="Problem Title *"
@@ -142,17 +152,16 @@ export default function AddEditProblemModal({
           required
         />
 
-        {/* Problem URL & Platform */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* URL & Platform */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="sm:col-span-2">
             <Input
-              label="Problem URL *"
+              label="Problem URL"
               name="problemUrl"
               placeholder="https://leetcode.com/problems/..."
               value={form.problemUrl}
               onChange={handleUrlChange}
               error={errors.problemUrl}
-              required
             />
           </div>
           <div>
@@ -162,7 +171,7 @@ export default function AddEditProblemModal({
             <select
               value={form.platform}
               onChange={(e) => setForm({ ...form, platform: e.target.value })}
-              className="w-full bg-bg-surface-elevated border border-border-default rounded-xl px-3.5 py-2.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-teal"
+              className="w-full bg-bg-surface border border-border-default rounded-xl px-3 py-2.5 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-brand-teal"
             >
               {DSA_PLATFORMS.map((p) => (
                 <option key={p} value={p}>
@@ -173,53 +182,60 @@ export default function AddEditProblemModal({
           </div>
         </div>
 
-        {/* Difficulty & Status */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">
-              Difficulty *
-            </label>
-            <div className="flex gap-2">
-              {DSA_DIFFICULTIES.map((d) => {
-                const isSelected = form.difficulty === d.value;
-                const colors = {
-                  EASY: isSelected
-                    ? 'bg-emerald-500 text-white border-emerald-500'
-                    : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20',
-                  MEDIUM: isSelected
-                    ? 'bg-amber-500 text-white border-amber-500'
-                    : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 hover:bg-amber-500/20',
-                  HARD: isSelected
-                    ? 'bg-rose-500 text-white border-rose-500'
-                    : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 hover:bg-rose-500/20',
-                };
-                return (
-                  <button
-                    key={d.value}
-                    type="button"
-                    onClick={() => setForm({ ...form, difficulty: d.value })}
-                    className={`flex-1 py-2 text-xs font-semibold rounded-xl border transition-all cursor-pointer ${
-                      colors[d.value]
-                    }`}
-                  >
-                    {d.label}
-                  </button>
-                );
-              })}
-            </div>
-            {errors.difficulty && (
-              <p className="text-xs text-status-error-text mt-1">{errors.difficulty}</p>
-            )}
-          </div>
-
+        {/* Difficulty, Primary Topic, and Initial Status */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Difficulty */}
           <div>
             <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">
-              Current Status
+              Difficulty *
+            </label>
+            <select
+              value={form.difficulty}
+              onChange={(e) => setForm({ ...form, difficulty: e.target.value })}
+              className="w-full bg-bg-surface border border-border-default rounded-xl px-3 py-2.5 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-brand-teal font-semibold"
+            >
+              {DSA_DIFFICULTIES.map((d) => (
+                <option key={d.value} value={d.value}>
+                  {d.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Primary Topic */}
+          <div>
+            <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">
+              Primary Topic *
+            </label>
+            <select
+              value={form.primaryTopic}
+              onChange={(e) => {
+                const newTopic = e.target.value;
+                setForm({
+                  ...form,
+                  primaryTopic: newTopic,
+                  additionalTopics: form.additionalTopics.filter((t) => t !== newTopic),
+                });
+              }}
+              className="w-full bg-bg-surface border border-border-default rounded-xl px-3 py-2.5 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-brand-teal"
+            >
+              {DSA_TOPICS.map((topic) => (
+                <option key={topic} value={topic}>
+                  {topic}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Status */}
+          <div>
+            <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">
+              Current Status *
             </label>
             <select
               value={form.status}
               onChange={(e) => setForm({ ...form, status: e.target.value })}
-              className="w-full bg-bg-surface-elevated border border-border-default rounded-xl px-3.5 py-2.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-teal"
+              className="w-full bg-bg-surface border border-border-default rounded-xl px-3 py-2.5 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-brand-teal"
             >
               {DSA_STATUSES.map((s) => (
                 <option key={s.value} value={s.value}>
@@ -230,54 +246,35 @@ export default function AddEditProblemModal({
           </div>
         </div>
 
-        {/* Primary Topic */}
+        {/* Additional Topics Picker */}
         <div>
-          <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">
-            Primary Topic *
-          </label>
-          <select
-            value={form.primaryTopic}
-            onChange={(e) => {
-              const newTopic = e.target.value;
-              setForm({
-                ...form,
-                primaryTopic: newTopic,
-                additionalTopics: form.additionalTopics.filter((t) => t !== newTopic),
-              });
-            }}
-            className="w-full bg-bg-surface-elevated border border-border-default rounded-xl px-3.5 py-2.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-teal"
-          >
-            {DSA_TOPICS.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-          {errors.primaryTopic && (
-            <p className="text-xs text-status-error-text mt-1">{errors.primaryTopic}</p>
-          )}
-        </div>
-
-        {/* Additional Topics Tags */}
-        <div>
-          <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">
-            Additional Topics / Patterns (Optional)
-          </label>
-          <div className="flex flex-wrap gap-1.5 p-2 bg-bg-surface-elevated/50 border border-border-default/60 rounded-xl max-h-28 overflow-y-auto">
-            {DSA_TOPICS.filter((t) => t !== form.primaryTopic).map((topic) => {
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
+              Secondary Topics / Algorithmic Patterns
+            </label>
+            <span className="text-[10px] text-text-muted">
+              {form.additionalTopics.length} selected
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-1.5 p-2.5 rounded-xl bg-bg-surface-elevated border border-border-default max-h-28 overflow-y-auto">
+            {DSA_TOPICS.map((topic) => {
+              const isPrimary = topic === form.primaryTopic;
               const selected = form.additionalTopics.includes(topic);
               return (
                 <button
                   key={topic}
                   type="button"
+                  disabled={isPrimary}
                   onClick={() => toggleAdditionalTopic(topic)}
-                  className={`text-xs px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
-                    selected
-                      ? 'bg-brand-teal text-white border-brand-teal'
-                      : 'bg-bg-surface text-text-muted border-border-default hover:text-text-primary hover:border-brand-teal/40'
+                  className={`text-[11px] px-2 py-0.5 rounded-lg border transition-colors cursor-pointer ${
+                    isPrimary
+                      ? 'bg-brand-teal/20 text-brand-teal border-brand-teal/40 font-bold opacity-75'
+                      : selected
+                      ? 'bg-brand-teal text-white border-brand-teal font-semibold'
+                      : 'bg-bg-surface text-text-secondary border-border-default hover:border-brand-teal/40 hover:text-text-primary'
                   }`}
                 >
-                  {topic} {selected ? '✓' : '+'}
+                  {topic} {isPrimary ? '(Primary)' : selected ? '✓' : '+'}
                 </button>
               );
             })}
@@ -285,7 +282,7 @@ export default function AddEditProblemModal({
         </div>
 
         {/* Complexities */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Input
             label="Time Complexity"
             name="timeComplexity"
@@ -308,30 +305,30 @@ export default function AddEditProblemModal({
             Solution Approach / Key Intuition
           </label>
           <textarea
-            rows={3}
+            rows={2}
             value={form.solutionApproach}
             onChange={(e) => setForm({ ...form, solutionApproach: e.target.value })}
-            placeholder="Explain the optimal algorithm, key invariants, and edge cases handled..."
-            className="w-full bg-bg-surface-elevated border border-border-default rounded-xl p-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-teal resize-y"
+            placeholder="Optimal algorithm invariant, edge cases, two-pointer or sliding window condition..."
+            className="w-full bg-bg-surface border border-border-default rounded-xl p-2.5 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-brand-teal resize-y"
           />
         </div>
 
         {/* Personal Notes */}
         <div>
           <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">
-            Personal Notes & Takeaways
+            Personal Notes & Common Pitfalls
           </label>
           <textarea
             rows={2}
             value={form.personalNotes}
             onChange={(e) => setForm({ ...form, personalNotes: e.target.value })}
-            placeholder="Common mistakes to watch out for in interviews..."
-            className="w-full bg-bg-surface-elevated border border-border-default rounded-xl p-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-teal resize-y"
+            placeholder="Tricky off-by-one errors, recursion base conditions to remember..."
+            className="w-full bg-bg-surface border border-border-default rounded-xl p-2.5 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-brand-teal resize-y"
           />
         </div>
 
         {/* Revision Required Checkbox */}
-        <div className="flex items-center gap-3 p-3 bg-brand-gold/10 border border-brand-gold/20 rounded-xl">
+        <div className="flex items-center gap-3 p-3 bg-brand-gold/10 border border-brand-gold/25 rounded-xl">
           <input
             type="checkbox"
             id="revisionRequired"
@@ -340,21 +337,10 @@ export default function AddEditProblemModal({
             className="w-4 h-4 rounded text-brand-teal focus:ring-brand-teal border-border-default cursor-pointer"
           />
           <label htmlFor="revisionRequired" className="text-xs text-text-primary font-medium cursor-pointer">
-            Mark this problem for future revision (spaced repetition)
+            Queue this problem in Spaced Repetition for scheduled revision
           </label>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-3 pt-3 border-t border-border-subtle">
-          <Button variant="ghost" onClick={onClose} disabled={isSaving}>
-            Cancel
-          </Button>
-          <Button variant="primary" type="submit" isLoading={isSaving}>
-            {isEditing ? 'Save Changes' : 'Add Problem'}
-          </Button>
         </div>
       </form>
     </Modal>
   );
 }
-

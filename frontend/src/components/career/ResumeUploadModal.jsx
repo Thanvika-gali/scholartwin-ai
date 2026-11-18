@@ -114,8 +114,29 @@ export default function ResumeUploadModal({ isOpen, onClose, onSuccess }) {
           />
         </svg>
       }
+      footer={
+        <>
+          <Button variant="secondary" onClick={handleClose} disabled={isLoading}>
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form="resume-upload-form"
+            variant="primary"
+            isLoading={isLoading}
+            disabled={!file || isLoading}
+            icon={
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+            }
+          >
+            Upload & Analyze
+          </Button>
+        </>
+      }
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form id="resume-upload-form" onSubmit={handleSubmit} className="space-y-4">
         {error && (
           <Alert variant="error" dismissible onDismiss={() => setError(null)}>
             {error}
@@ -206,26 +227,6 @@ export default function ResumeUploadModal({ isOpen, onClose, onSuccess }) {
             </div>
           </div>
         )}
-
-        {/* Action Buttons */}
-        <div className="flex justify-end gap-3 pt-3 border-t border-border-subtle">
-          <Button variant="secondary" onClick={handleClose} disabled={isLoading}>
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            variant="primary"
-            isLoading={isLoading}
-            disabled={!file || isLoading}
-            icon={
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-              </svg>
-            }
-          >
-            Upload & Analyze
-          </Button>
-        </div>
       </form>
     </Modal>
   );

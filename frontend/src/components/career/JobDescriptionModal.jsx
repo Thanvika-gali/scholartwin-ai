@@ -101,6 +101,38 @@ export default function JobDescriptionModal({ isOpen, onClose, onSuccess, resume
           />
         </svg>
       }
+      footer={
+        analysisResult ? (
+          <div className="w-full flex items-center justify-between">
+            <Button variant="secondary" onClick={() => setAnalysisResult(null)}>
+              Analyze Another JD
+            </Button>
+            <Button variant="primary" onClick={onClose}>
+              Done
+            </Button>
+          </div>
+        ) : (
+          <>
+            <Button variant="secondary" onClick={onClose} disabled={isLoading}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              form="job-description-form"
+              variant="primary"
+              isLoading={isLoading}
+              disabled={isLoading}
+              icon={
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+              }
+            >
+              Run Diagnostic Match
+            </Button>
+          </>
+        )
+      }
     >
       {analysisResult ? (
         <div className="space-y-5 py-1">
@@ -196,18 +228,9 @@ export default function JobDescriptionModal({ isOpen, onClose, onSuccess, resume
               </ul>
             </div>
           )}
-
-          <div className="flex justify-between pt-3 border-t border-border-subtle">
-            <Button variant="secondary" onClick={() => setAnalysisResult(null)}>
-              Analyze Another JD
-            </Button>
-            <Button variant="primary" onClick={onClose}>
-              Done
-            </Button>
-          </div>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form id="job-description-form" onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <Alert variant="error" dismissible onDismiss={() => setError(null)}>
               {error}
@@ -270,25 +293,6 @@ export default function JobDescriptionModal({ isOpen, onClose, onSuccess, resume
             <p className="text-[11px] text-text-muted mt-1">
               Minimum 30 characters. The parser extracts required skills, preferred qualifications, and keywords automatically.
             </p>
-          </div>
-
-          <div className="flex justify-end gap-3 pt-3 border-t border-border-subtle">
-            <Button variant="secondary" onClick={onClose} disabled={isLoading}>
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              isLoading={isLoading}
-              disabled={isLoading}
-              icon={
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-              }
-            >
-              Run Diagnostic Match
-            </Button>
           </div>
         </form>
       )}

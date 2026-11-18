@@ -190,8 +190,28 @@ export default function KnowledgeItemModal({
           : 'Capture concepts, revision formulas, code notes, and key takeaways.'
       }
       icon={icon}
+      footer={
+        <>
+          <Button
+            variant="secondary"
+            onClick={onClose}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
+
+          <Button
+            type="submit"
+            form="knowledge-item-form"
+            variant="primary"
+            isLoading={isSubmitting}
+          >
+            {isEditing ? 'Save Changes' : type === 'LINK' ? 'Add Resource' : 'Create Note'}
+          </Button>
+        </>
+      }
     >
-      <form onSubmit={handleSubmit} className="p-6 space-y-5">
+      <form id="knowledge-item-form" onSubmit={handleSubmit} className="space-y-5">
         {/* Error Alerts */}
         {(validationError || serverError) && (
           <Alert variant="error" onClose={() => { setValidationError(''); setServerError(''); }}>
@@ -340,25 +360,6 @@ export default function KnowledgeItemModal({
             </select>
           </div>
         )}
-
-        {/* Footer Actions */}
-        <div className="pt-4 border-t border-border-subtle flex items-center justify-end gap-3">
-          <Button
-            variant="ghost"
-            onClick={onClose}
-            disabled={isSubmitting}
-          >
-            Cancel
-          </Button>
-
-          <Button
-            type="submit"
-            variant="primary"
-            isLoading={isSubmitting}
-          >
-            {isEditing ? 'Save Changes' : type === 'LINK' ? 'Add Resource' : 'Create Note'}
-          </Button>
-        </div>
       </form>
     </Modal>
   );

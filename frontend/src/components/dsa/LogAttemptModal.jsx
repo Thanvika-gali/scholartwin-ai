@@ -73,8 +73,24 @@ export default function LogAttemptModal({
           />
         </svg>
       }
+      footer={
+        <div className="flex items-center justify-end gap-3 w-full">
+          <Button variant="ghost" onClick={onClose} disabled={isSaving} size="sm">
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            type="submit"
+            form="log-dsa-attempt-form"
+            isLoading={isSaving}
+            size="sm"
+          >
+            Save Attempt
+          </Button>
+        </div>
+      }
     >
-      <form onSubmit={handleSubmit} className="p-6 space-y-4">
+      <form id="log-dsa-attempt-form" onSubmit={handleSubmit} className="space-y-4">
         {/* Outcome Selection Buttons */}
         <div>
           <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">
@@ -84,13 +100,13 @@ export default function LogAttemptModal({
             <button
               type="button"
               onClick={() => setForm({ ...form, outcome: 'SUCCESS' })}
-              className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl border text-sm font-semibold transition-all cursor-pointer ${
+              className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
                 form.outcome === 'SUCCESS'
-                  ? 'bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-500/20'
-                  : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
+                  ? 'bg-status-success text-white border-status-success shadow-xs'
+                  : 'bg-status-success-bg text-status-success-text border-status-success-border hover:opacity-90'
               }`}
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
               </svg>
               Solved / Passed
@@ -99,29 +115,24 @@ export default function LogAttemptModal({
             <button
               type="button"
               onClick={() => setForm({ ...form, outcome: 'FAILED' })}
-              className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl border text-sm font-semibold transition-all cursor-pointer ${
+              className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
                 form.outcome === 'FAILED'
-                  ? 'bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-500/20'
-                  : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 hover:bg-amber-500/20'
+                  ? 'bg-status-error text-white border-status-error shadow-xs'
+                  : 'bg-status-error-bg text-status-error-text border-status-error-border hover:opacity-90'
               }`}
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
               </svg>
-              Attempted / Struggled
+              Unsolved / Time Limit
             </button>
           </div>
-          <p className="text-[11px] text-text-muted mt-1.5">
-            {form.outcome === 'SUCCESS'
-              ? 'Promotes problem status to SOLVED and increments your practice streak.'
-              : 'Marks problem status as ATTEMPTED for targeted revision.'}
-          </p>
         </div>
 
-        {/* Date & Time Spent */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Date and Time Spent */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Input
-            label="Date *"
+            label="Attempt Date *"
             type="date"
             name="attemptDate"
             value={form.attemptDate}
@@ -130,12 +141,12 @@ export default function LogAttemptModal({
             required
           />
           <Input
-            label="Time Spent (Minutes)"
+            label="Time Spent (minutes)"
             type="number"
             min="1"
-            max="1440"
+            max="600"
             name="timeSpentMinutes"
-            placeholder="e.g. 30"
+            placeholder="e.g. 25"
             value={form.timeSpentMinutes}
             onChange={(e) => setForm({ ...form, timeSpentMinutes: e.target.value })}
             error={errors.timeSpentMinutes}
@@ -145,12 +156,12 @@ export default function LogAttemptModal({
         {/* Programming Language */}
         <div>
           <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">
-            Programming Language
+            Implementation Language
           </label>
           <select
             value={form.programmingLanguage}
             onChange={(e) => setForm({ ...form, programmingLanguage: e.target.value })}
-            className="w-full bg-bg-surface-elevated border border-border-default rounded-xl px-3.5 py-2.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-teal"
+            className="w-full bg-bg-surface border border-border-default rounded-xl px-3 py-2.5 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-brand-teal"
           >
             {PROGRAMMING_LANGUAGES.map((lang) => (
               <option key={lang} value={lang}>
@@ -160,45 +171,20 @@ export default function LogAttemptModal({
           </select>
         </div>
 
-        {/* Learning Notes */}
+        {/* Difficulty Encountered / Notes */}
         <div>
           <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">
-            Key Learning Notes / What Went Well
+            Key Learning Takeaway & Observations
           </label>
           <textarea
             rows={2}
             value={form.learningNotes}
             onChange={(e) => setForm({ ...form, learningNotes: e.target.value })}
-            placeholder="e.g. Discovered the sliding window condition; avoided O(N^2) brute force..."
-            className="w-full bg-bg-surface-elevated border border-border-default rounded-xl p-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-teal resize-y"
+            placeholder="What invariant did you discover? Any edge cases that triggered wrong answers?"
+            className="w-full bg-bg-surface border border-border-default rounded-xl p-2.5 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-brand-teal resize-y"
           />
-        </div>
-
-        {/* Obstacles / Errors Encountered */}
-        <div>
-          <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">
-            Obstacles / Bugs Encountered (Optional)
-          </label>
-          <input
-            type="text"
-            value={form.difficultyEncountered}
-            onChange={(e) => setForm({ ...form, difficultyEncountered: e.target.value })}
-            placeholder="e.g. Off-by-one on loop termination, integer overflow..."
-            className="w-full bg-bg-surface-elevated border border-border-default rounded-xl px-3.5 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-teal"
-          />
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-3 pt-3 border-t border-border-subtle">
-          <Button variant="ghost" onClick={onClose} disabled={isSaving}>
-            Cancel
-          </Button>
-          <Button variant="primary" type="submit" isLoading={isSaving}>
-            Log Attempt
-          </Button>
         </div>
       </form>
     </Modal>
   );
 }
-

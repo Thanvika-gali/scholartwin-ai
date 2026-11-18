@@ -10,8 +10,12 @@ import com.aischolartwin.entity.DSARevisionStatus;
 import com.aischolartwin.entity.User;
 import com.aischolartwin.exception.InvalidPayloadException;
 import com.aischolartwin.exception.ResourceNotFoundException;
+import com.aischolartwin.entity.learning.RevisionItemType;
+import com.aischolartwin.entity.learning.RevisionStatus;
+import com.aischolartwin.entity.learning.SpacedRevisionItem;
 import com.aischolartwin.repository.DSAProblemRepository;
 import com.aischolartwin.repository.DSARevisionRepository;
+import com.aischolartwin.repository.learning.SpacedRevisionItemRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,15 +30,27 @@ public class DSARevisionService {
     private final DSARevisionRepository revisionRepository;
     private final DSAProblemRepository problemRepository;
     private final DSAProblemService problemService;
+    private final SpacedRevisionItemRepository spacedRevisionItemRepository;
 
     public DSARevisionService(
             DSARevisionRepository revisionRepository,
             DSAProblemRepository problemRepository,
             DSAProblemService problemService
     ) {
+        this(revisionRepository, problemRepository, problemService, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public DSARevisionService(
+            DSARevisionRepository revisionRepository,
+            DSAProblemRepository problemRepository,
+            DSAProblemService problemService,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) SpacedRevisionItemRepository spacedRevisionItemRepository
+    ) {
         this.revisionRepository = revisionRepository;
         this.problemRepository = problemRepository;
         this.problemService = problemService;
+        this.spacedRevisionItemRepository = spacedRevisionItemRepository;
     }
 
     @Transactional
@@ -83,6 +99,22 @@ public class DSARevisionService {
                         DSAProblem problem = revision.getProblem();
                         problem.setRevisionRequired(false);
                         problemRepository.save(problem);
+                    }
+
+                    // Sync corresponding SpacedRevisionItem in Milestone 8 if present
+                    if (spacedRevisionItemRepository != null) {
+                        try {
+                            List<SpacedRevisionItem> items = spacedRevisionItemRepository.findByUserOrderByScheduledDateAsc(user);
+                            for (SpacedRevisionItem item : items) {
+                                if (item.getItemType() == RevisionItemType.DSA_PROBLEM
+                                        && item.getLinkedReferenceId() != null
+                                        && item.getLinkedReferenceId().equals(revision.getProblem().getId())) {
+                                    item.setStatus(RevisionStatus.COMPLETED);
+                                    item.setLastReviewedAt(Instant.now());
+                                    spacedRevisionItemRepository.save(item);
+                                }
+                            }
+                        } catch (Exception ignored) {}
                     }
                 } else {
                     revision.setCompletedAt(null);

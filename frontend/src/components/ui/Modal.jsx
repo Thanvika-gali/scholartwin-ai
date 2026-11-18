@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 export default function Modal({
   isOpen,
@@ -6,9 +6,12 @@ export default function Modal({
   title,
   subtitle,
   children,
+  footer,
   maxWidth = 'max-w-2xl',
   icon,
 }) {
+  const modalRef = useRef(null);
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape' && isOpen) {
@@ -30,36 +33,37 @@ export default function Modal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-brand-navy/70 dark:bg-black/75 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-brand-navy/70 dark:bg-black/80 backdrop-blur-sm transition-opacity"
         onClick={onClose}
         aria-hidden="true"
       />
 
       {/* Modal Card */}
       <div
+        ref={modalRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? 'modal-title' : undefined}
-        className={`relative bg-bg-surface border border-border-default rounded-2xl w-full ${maxWidth} shadow-modal z-10 flex flex-col max-h-[90vh] overflow-hidden transition-all animate-in fade-in zoom-in-95 duration-150`}
+        className={`relative bg-bg-surface border border-border-default rounded-2xl w-full ${maxWidth} shadow-modal z-10 flex flex-col max-h-[88vh] overflow-hidden transition-all animate-in fade-in zoom-in-95 duration-150`}
       >
-        {/* Header */}
-        <div className="px-6 py-5 border-b border-border-subtle flex items-start justify-between gap-4">
+        {/* Pinned Header */}
+        <div className="px-5 sm:px-6 py-4 border-b border-border-subtle flex items-start justify-between gap-3 shrink-0 bg-bg-surface">
           <div className="flex items-center gap-3 min-w-0">
             {icon && (
-              <div className="w-10 h-10 rounded-xl bg-brand-teal/15 text-brand-teal flex items-center justify-center shrink-0 border border-brand-teal/20">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-brand-teal/15 text-brand-teal flex items-center justify-center shrink-0 border border-brand-teal/20">
                 {icon}
               </div>
             )}
             <div className="min-w-0">
               {title && (
-                <h3 id="modal-title" className="text-base sm:text-lg font-bold text-text-primary truncate">
+                <h3 id="modal-title" className="text-sm sm:text-base md:text-lg font-bold text-text-primary truncate">
                   {title}
                 </h3>
               )}
-              {subtitle && <p className="text-xs text-text-muted mt-0.5">{subtitle}</p>}
+              {subtitle && <p className="text-xs text-text-muted mt-0.5 line-clamp-1">{subtitle}</p>}
             </div>
           </div>
 
@@ -75,10 +79,16 @@ export default function Modal({
           </button>
         </div>
 
-        {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto">{children}</div>
+        {/* Scrollable Body */}
+        <div className="flex-1 overflow-y-auto p-5 sm:p-6 min-h-0">{children}</div>
+
+        {/* Optional Pinned Footer */}
+        {footer && (
+          <div className="px-5 sm:px-6 py-3.5 border-t border-border-subtle bg-bg-surface-elevated/40 flex items-center justify-end gap-3 shrink-0">
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   );
 }
-

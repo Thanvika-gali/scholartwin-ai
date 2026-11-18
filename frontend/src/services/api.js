@@ -4,6 +4,13 @@
  */
 
 const TOKEN_KEY = 'scholartwin_token';
+const API_PREFIX = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL) || '';
+
+export function resolveUrl(endpoint) {
+  if (!endpoint) return '';
+  if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) return endpoint;
+  return API_PREFIX ? `${API_PREFIX}${endpoint}` : endpoint;
+}
 
 export function getStoredToken() {
   return localStorage.getItem(TOKEN_KEY);
@@ -36,7 +43,7 @@ async function request(endpoint, options = {}) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(endpoint, {
+  const response = await fetch(resolveUrl(endpoint), {
     ...options,
     headers,
   });
@@ -355,7 +362,7 @@ export async function uploadDocumentApi(file, onProgress, options = {}) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch('/api/documents', {
+  const response = await fetch(resolveUrl('/api/documents'), {
     method: 'POST',
     headers,
     body: formData,
@@ -425,7 +432,7 @@ export async function downloadDocumentApi(id, filename) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`/api/documents/${id}/download`, {
+  const response = await fetch(resolveUrl(`/api/documents/${id}/download`), {
     method: 'GET',
     headers,
   });
@@ -675,7 +682,7 @@ export async function uploadResumeApi(file, title, onProgress) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch('/api/career/resumes', {
+  const response = await fetch(resolveUrl('/api/career/resumes'), {
     method: 'POST',
     headers,
     body: formData,
@@ -717,7 +724,7 @@ export async function downloadResumeApi(id, filename) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`/api/career/resumes/${id}/download`, {
+  const response = await fetch(resolveUrl(`/api/career/resumes/${id}/download`), {
     method: 'GET',
     headers,
   });
@@ -1154,7 +1161,7 @@ export async function checkDuplicateDocumentApi(file) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch('/api/documents/check-duplicate', {
+  const response = await fetch(resolveUrl('/api/documents/check-duplicate'), {
     method: 'POST',
     headers,
     body: formData,
@@ -1172,6 +1179,394 @@ export async function fetchDocumentIntelligenceApi(id) {
 export async function regenerateDocumentIntelligenceApi(id) {
   return await request(`/api/documents/${id}/intelligence/regenerate`, { method: 'POST' });
 }
+
+// ==========================================
+// MILESTONE 8 — PERSONALIZED LEARNING & REVISION
+// ==========================================
+
+// --- Learning Profile ---
+export async function fetchLearningProfileApi() {
+  return await request('/api/learning/profile', { method: 'GET' });
+}
+
+export async function updateLearningProfileApi(payload) {
+  return await request('/api/learning/profile', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
+// --- Learning Gap Analysis ---
+export async function fetchLearningGapsApi() {
+  return await request('/api/learning/gaps', { method: 'GET' });
+}
+
+// --- Learning Roadmaps & Tasks ---
+export async function fetchLearningRoadmapsApi() {
+  return await request('/api/learning/roadmaps', { method: 'GET' });
+}
+
+export async function createLearningRoadmapApi(payload) {
+  return await request('/api/learning/roadmaps', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchLearningRoadmapDetailApi(id) {
+  return await request(`/api/learning/roadmaps/${id}`, { method: 'GET' });
+}
+
+export async function updateLearningRoadmapApi(id, payload) {
+  return await request(`/api/learning/roadmaps/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteLearningRoadmapApi(id) {
+  return await request(`/api/learning/roadmaps/${id}`, { method: 'DELETE' });
+}
+
+export async function addRoadmapTaskApi(phaseId, payload) {
+  return await request(`/api/learning/roadmaps/phases/${phaseId}/tasks`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateTaskStatusApi(taskId, payload) {
+  return await request(`/api/learning/tasks/${taskId}/status`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteRoadmapTaskApi(taskId) {
+  return await request(`/api/learning/tasks/${taskId}`, { method: 'DELETE' });
+}
+
+// --- Daily Study Planner ---
+export async function fetchDailyPlanApi(date) {
+  const query = date ? `?date=${encodeURIComponent(date)}` : '';
+  return await request(`/api/learning/planner${query}`, { method: 'GET' });
+}
+
+export async function createPlannerTaskApi(payload) {
+  return await request('/api/learning/planner/tasks', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updatePlannerTaskApi(taskId, payload) {
+  return await request(`/api/learning/planner/tasks/${taskId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function reschedulePlannerTaskApi(taskId, payload) {
+  return await request(`/api/learning/planner/tasks/${taskId}/reschedule`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deletePlannerTaskApi(taskId) {
+  return await request(`/api/learning/planner/tasks/${taskId}`, { method: 'DELETE' });
+}
+
+export async function autoPopulateDailyPlanApi(date) {
+  const query = date ? `?date=${encodeURIComponent(date)}` : '';
+  return await request(`/api/learning/planner/auto-populate${query}`, { method: 'POST' });
+}
+
+// --- Study Sessions ---
+export async function fetchStudySessionsApi() {
+  return await request('/api/learning/study-sessions', { method: 'GET' });
+}
+
+export async function logStudySessionApi(payload) {
+  return await request('/api/learning/study-sessions', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+// --- Spaced Revision Center ---
+export async function fetchRevisionQueueApi() {
+  return await request('/api/learning/revisions', { method: 'GET' });
+}
+
+export async function createRevisionItemApi(payload) {
+  return await request('/api/learning/revisions', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function completeRevisionApi(id, payload) {
+  return await request(`/api/learning/revisions/${id}/complete`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteRevisionItemApi(id) {
+  return await request(`/api/learning/revisions/${id}`, { method: 'DELETE' });
+}
+
+// --- Assessment & Quiz Engine ---
+export async function fetchAssessmentsApi() {
+  return await request('/api/learning/assessments', { method: 'GET' });
+}
+
+export async function generateAssessmentApi(payload) {
+  return await request('/api/learning/assessments', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchAssessmentForDeliveryApi(id) {
+  return await request(`/api/learning/assessments/${id}`, { method: 'GET' });
+}
+
+export async function submitAssessmentApi(id, payload) {
+  return await request(`/api/learning/assessments/${id}/submit`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchAssessmentHistoryApi() {
+  return await request('/api/learning/assessments/history', { method: 'GET' });
+}
+
+// --- Learning Resources ---
+export async function fetchLearningResourcesApi(params = {}) {
+  const queryParams = new URLSearchParams();
+  if (params.topic) queryParams.append('topic', params.topic);
+  if (params.taskId) queryParams.append('taskId', params.taskId);
+  const qs = queryParams.toString() ? `?${queryParams.toString()}` : '';
+  return await request(`/api/learning/resources${qs}`, { method: 'GET' });
+}
+
+export async function associateLearningResourceApi(payload) {
+  return await request('/api/learning/resources', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function markResourceStudiedApi(id, studied) {
+  return await request(`/api/learning/resources/${id}/studied`, {
+    method: 'PUT',
+    body: JSON.stringify({ studied }),
+  });
+}
+
+export async function deleteLearningResourceApi(id) {
+  return await request(`/api/learning/resources/${id}`, { method: 'DELETE' });
+}
+
+// --- Learning Analytics ---
+export async function fetchLearningAnalyticsApi() {
+  return await request('/api/learning/analytics', { method: 'GET' });
+}
+
+// --- AI Learning Assistant ---
+export async function consultAiLearningAssistantApi(payload) {
+  return await request('/api/learning/assistant/query', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+// ==============================================================================
+// MILESTONE 9: AI INSIGHTS, MEMORY & ANALYTICS APIs
+// ==============================================================================
+
+// --- User Memories ---
+export async function fetchMemoriesApi(params = {}) {
+  const query = new URLSearchParams();
+  if (params.category) query.append('category', params.category);
+  if (params.status) query.append('status', params.status);
+  if (params.pinnedOnly) query.append('pinnedOnly', 'true');
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  return await request(`/api/intelligence/memories${qs}`, { method: 'GET' });
+}
+
+export async function fetchMemoryDetailApi(id) {
+  return await request(`/api/intelligence/memories/${id}`, { method: 'GET' });
+}
+
+export async function createMemoryApi(payload) {
+  return await request('/api/intelligence/memories', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateMemoryApi(id, payload) {
+  return await request(`/api/intelligence/memories/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteMemoryApi(id) {
+  return await request(`/api/intelligence/memories/${id}`, { method: 'DELETE' });
+}
+
+export async function archiveMemoryApi(id) {
+  return await request(`/api/intelligence/memories/${id}/archive`, { method: 'POST' });
+}
+
+export async function togglePinMemoryApi(id) {
+  return await request(`/api/intelligence/memories/${id}/pin`, { method: 'POST' });
+}
+
+export async function searchMemoriesApi(query) {
+  const q = query ? `?q=${encodeURIComponent(query)}` : '';
+  return await request(`/api/intelligence/memories/search${q}`, { method: 'GET' });
+}
+
+export async function extractMemoriesApi() {
+  return await request('/api/intelligence/memories/extract', { method: 'POST' });
+}
+
+export async function consolidateMemoriesApi() {
+  return await request('/api/intelligence/memories/consolidate', { method: 'POST' });
+}
+
+export async function bulkDeleteMemoriesApi(payload) {
+  return await request('/api/intelligence/memories/bulk', {
+    method: 'DELETE',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchMemoryStatsApi() {
+  return await request('/api/intelligence/memories/stats', { method: 'GET' });
+}
+
+// --- Memory Preferences ---
+export async function fetchMemoryPreferencesApi() {
+  return await request('/api/intelligence/memory-preferences', { method: 'GET' });
+}
+
+export async function updateMemoryPreferencesApi(payload) {
+  return await request('/api/intelligence/memory-preferences', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
+// --- Insights ---
+export async function fetchInsightsApi(params = {}) {
+  const query = new URLSearchParams();
+  if (params.category) query.append('category', params.category);
+  if (params.status) query.append('status', params.status);
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  return await request(`/api/intelligence/insights${qs}`, { method: 'GET' });
+}
+
+export async function fetchInsightDetailApi(id) {
+  return await request(`/api/intelligence/insights/${id}`, { method: 'GET' });
+}
+
+export async function generateInsightsApi(forceRefresh = false) {
+  return await request(`/api/intelligence/insights/generate?forceRefresh=${forceRefresh}`, { method: 'POST' });
+}
+
+export async function refreshInsightsApi() {
+  return await request('/api/intelligence/insights/refresh', { method: 'POST' });
+}
+
+export async function dismissInsightApi(id) {
+  return await request(`/api/intelligence/insights/${id}/dismiss`, { method: 'POST' });
+}
+
+// --- Recommendations ---
+export async function fetchRecommendationsApi(params = {}) {
+  const query = new URLSearchParams();
+  if (params.status) query.append('status', params.status);
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  return await request(`/api/intelligence/recommendations${qs}`, { method: 'GET' });
+}
+
+export async function generateRecommendationsApi() {
+  return await request('/api/intelligence/recommendations/generate', { method: 'POST' });
+}
+
+export async function acceptRecommendationApi(id) {
+  return await request(`/api/intelligence/recommendations/${id}/accept`, { method: 'POST' });
+}
+
+export async function dismissRecommendationApi(id) {
+  return await request(`/api/intelligence/recommendations/${id}/dismiss`, { method: 'POST' });
+}
+
+export async function completeRecommendationApi(id) {
+  return await request(`/api/intelligence/recommendations/${id}/complete`, { method: 'POST' });
+}
+
+// --- Knowledge Graph ---
+export async function fetchKnowledgeGraphApi(params = {}) {
+  const query = new URLSearchParams();
+  if (params.q) query.append('q', params.q);
+  if (params.category) query.append('category', params.category);
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  return await request(`/api/intelligence/knowledge-graph${qs}`, { method: 'GET' });
+}
+
+export async function fetchGraphNodeDetailApi(id) {
+  return await request(`/api/intelligence/knowledge-graph/nodes/${id}`, { method: 'GET' });
+}
+
+export async function syncKnowledgeGraphApi() {
+  return await request('/api/intelligence/knowledge-graph/sync', { method: 'POST' });
+}
+
+// --- Intelligence Analytics ---
+export async function fetchIntelligenceOverviewApi() {
+  return await request('/api/intelligence/analytics/overview', { method: 'GET' });
+}
+
+export async function fetchLearningIntelligenceApi() {
+  return await request('/api/intelligence/analytics/learning', { method: 'GET' });
+}
+
+export async function fetchDsaIntelligenceApi() {
+  return await request('/api/intelligence/analytics/dsa', { method: 'GET' });
+}
+
+export async function fetchCareerIntelligenceApi() {
+  return await request('/api/intelligence/analytics/career', { method: 'GET' });
+}
+
+export async function fetchAiUsageIntelligenceApi() {
+  return await request('/api/intelligence/analytics/ai-usage', { method: 'GET' });
+}
+
+// --- AI Twin Chat ---
+export async function sendChatMessageApi(payload) {
+  return await request('/api/intelligence/chat/message', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchChatHistoryApi() {
+  return await request('/api/intelligence/chat/history', { method: 'GET' });
+}
+
+export async function clearChatHistoryApi() {
+  return await request('/api/intelligence/chat/history', { method: 'DELETE' });
+}
+
 
 
 

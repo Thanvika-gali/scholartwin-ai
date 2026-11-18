@@ -14,6 +14,8 @@ import DashboardPage from './pages/DashboardPage';
 import KnowledgeHubPage from './pages/KnowledgeHubPage';
 import DsaTrackerPage from './pages/DsaTrackerPage';
 import CareerHubPage from './pages/CareerHubPage';
+import LearningHubPage from './pages/LearningHubPage';
+import IntelligenceHubPage from './pages/IntelligenceHubPage';
 import ProfilePage from './pages/ProfilePage';
 
 function PublicLayout({ children }) {
@@ -101,6 +103,26 @@ export default function App() {
                 <ProtectedRoute>
                   <AppLayout>
                     <CareerHubPage />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/learning"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <LearningHubPage />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/intelligence"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <IntelligenceHubPage />
                   </AppLayout>
                 </ProtectedRoute>
               }

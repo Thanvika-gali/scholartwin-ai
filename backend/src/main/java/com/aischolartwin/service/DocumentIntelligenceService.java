@@ -78,16 +78,10 @@ public class DocumentIntelligenceService {
         List<String> headings = new ArrayList<>();
 
         for (DocumentChunk chunk : chunks) {
-            fullText.append(chunk.getContent()).append("\n");
-            int page = chunk.getPageNumber() != null ? chunk.getPageNumber() : 1;
-            pageTextMap.merge(page, chunk.getContent(), (a, b) -> a + "\n" + b);
-
-            if (chunk.getHeading() != null && !chunk.getHeading().isBlank()) {
-                String cleanH = chunk.getHeading().trim();
-                if (!headings.contains(cleanH)) {
-                    headings.add(cleanH);
-                }
-            }
+            String text = chunk.getChunkText() != null ? chunk.getChunkText() : "";
+            fullText.append(text).append("\n");
+            int page = chunk.getStartPage() > 0 ? chunk.getStartPage() : 1;
+            pageTextMap.merge(page, text, (a, b) -> a + "\n" + b);
         }
 
         String contentStr = fullText.toString();

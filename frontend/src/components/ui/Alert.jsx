@@ -5,8 +5,11 @@ export default function Alert({
   title,
   children,
   onClose,
+  onDismiss,
+  dismissible,
   className = '',
 }) {
+  const handleClose = onClose || onDismiss;
   const variantStyles = {
     error: {
       wrapper: 'bg-status-error-bg border-status-error-border text-status-error-text',
@@ -54,10 +57,10 @@ export default function Alert({
         {title && <p className="font-semibold mb-0.5">{title}</p>}
         <div className="leading-relaxed">{children}</div>
       </div>
-      {onClose && (
+      {handleClose && (
         <button
           type="button"
-          onClick={onClose}
+          onClick={handleClose}
           className="text-current opacity-70 hover:opacity-100 p-0.5 cursor-pointer"
           aria-label="Dismiss alert"
         >

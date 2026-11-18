@@ -306,6 +306,103 @@ export default function CareerHubPage() {
               {/* TAB 1: OVERVIEW & INSIGHTS */}
               {activeTab === 'overview' && (
                 <div className="space-y-6">
+                  {/* Onboarding Guide Card when user has no resumes yet */}
+                  {resumes.length === 0 && (
+                    <div className="p-6 rounded-2xl bg-gradient-to-br from-brand-navy via-brand-navy-light to-brand-navy text-white border border-brand-teal/40 shadow-lg relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-96 h-96 bg-brand-teal/10 rounded-full blur-3xl pointer-events-none" />
+                      <div className="relative z-10 space-y-4">
+                        <div className="flex items-center gap-3">
+                          <span className="px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase bg-brand-gold/20 text-brand-gold border border-brand-gold/30">
+                            Career Onboarding Guide
+                          </span>
+                          <span className="text-xs text-gray-300">Fast-track your tech career preparation</span>
+                        </div>
+                        <div>
+                          <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight">
+                            Accelerate Your SDE Career Readiness in 3 Steps
+                          </h3>
+                          <p className="text-xs sm:text-sm text-gray-300 mt-1 max-w-2xl leading-relaxed">
+                            Unlock automated ATS scoring, benchmark your verified skills against software engineering roles, and match against real job descriptions.
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+                          <div className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-brand-teal/50 transition-all flex flex-col justify-between space-y-3">
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-2">
+                                <span className="w-6 h-6 rounded-lg bg-brand-teal text-white flex items-center justify-center text-xs font-bold">
+                                  1
+                                </span>
+                                <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                                  Upload Resume
+                                </h4>
+                              </div>
+                              <p className="text-xs text-gray-300 leading-relaxed">
+                                Upload PDF or DOCX for instant 100-pt ATS diagnostics, layout scoring, and automated skill parsing.
+                              </p>
+                            </div>
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={() => setIsUploadModalOpen(true)}
+                              className="w-full text-xs"
+                            >
+                              Upload Resume
+                            </Button>
+                          </div>
+
+                          <div className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-brand-gold/50 transition-all flex flex-col justify-between space-y-3">
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-2">
+                                <span className="w-6 h-6 rounded-lg bg-brand-gold text-brand-navy flex items-center justify-center text-xs font-bold">
+                                  2
+                                </span>
+                                <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                                  Role Benchmark
+                                </h4>
+                              </div>
+                              <p className="text-xs text-gray-300 leading-relaxed">
+                                Compare your verified skills and DSA progress against industry benchmarks for SDE, Backend, Frontend & AI.
+                              </p>
+                            </div>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => setActiveTab('roles')}
+                              className="w-full text-xs bg-white/10 hover:bg-white/20 text-white border-white/20"
+                            >
+                              Explore Benchmark Roles
+                            </Button>
+                          </div>
+
+                          <div className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-brand-teal/50 transition-all flex flex-col justify-between space-y-3">
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-2">
+                                <span className="w-6 h-6 rounded-lg bg-brand-teal/30 text-brand-teal-light flex items-center justify-center text-xs font-bold">
+                                  3
+                                </span>
+                                <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                                  JD Matcher
+                                </h4>
+                              </div>
+                              <p className="text-xs text-gray-300 leading-relaxed">
+                                Paste any job description to discover required skill coverage, missing keywords, and tailored interview guidance.
+                              </p>
+                            </div>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => setIsJobModalOpen(true)}
+                              className="w-full text-xs bg-white/10 hover:bg-white/20 text-white border-white/20"
+                            >
+                              Match Job Spec
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Top 4 KPI Metrics */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <Card className="flex items-center gap-4 p-5">

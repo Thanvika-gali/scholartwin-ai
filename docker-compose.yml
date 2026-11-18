@@ -1,0 +1,120 @@
+# ==============================================================================
+# AI ScholarTwin — Production Docker Compose Architecture (Milestone 10)
+# ==============================================================================
+# Usage:
+#   1. Copy .env.example to .env and configure secrets (GEMINI_API_KEY, JWT_SECRET, etc.)
+#   2. Run: docker compose up -d --build
+#   3. Access application at: http://localhost
+# ==============================================================================
+
+version: '3.8'
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. MySQL 8 Database Service
+  # ----------------------------------------------------------------------------
+  mysql:
+    image: mysql:8.0
+    container_name: scholartwin-mysql
+    restart: unless-stopped
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --max_allowed_packet=128M
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-scholartwin_root_password}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-ai_scholartwin}
+      MYSQL_USER: ${MYSQL_USER:-scholartwin_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-scholartwin_password}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${MYSQL_USER:-scholartwin_user}", "-p${MYSQL_PASSWORD:-scholartwin_password}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - scholartwin-network
+    # Port 3306 is bounded to loopback only to prevent unauthenticated public network exposure
+    ports:
+      - "127.0.0.1:3306:3306"
+
+  # ----------------------------------------------------------------------------
+  # 2. Spring Boot 3 Backend Service
+  # ----------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: scholartwin-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-ai_scholartwin}?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-scholartwin_user}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-scholartwin_password}
+      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-86400000}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:80,http://localhost}
+      DOCUMENT_STORAGE_DIR: /app/uploads/documents
+      DOCUMENT_MAX_FILE_SIZE: 100MB
+      DOCUMENT_MAX_REQUEST_SIZE: 110MB
+      DOCUMENT_MAX_FILE_SIZE_BYTES: 104857600
+      DOCUMENT_MAX_PAGE_COUNT: 200
+      RESUME_MAX_FILE_SIZE_BYTES: 20971520
+      OCR_ENABLED: "true"
+      TESSERACT_PATH: /usr/bin/tesseract
+      OCR_LANGUAGE: eng
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+    volumes:
+      - uploads_data:/app/uploads/documents
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 35s
+    networks:
+      - scholartwin-network
+    ports:
+      - "8080:8080"
+
+  # ----------------------------------------------------------------------------
+  # 3. React 19 Frontend Service (Nginx Reverse Proxy)
+  # ----------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: scholartwin-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - scholartwin-network
+    ports:
+      - "80:80"
+
+# ------------------------------------------------------------------------------
+# Persistent Storage Volumes
+# ------------------------------------------------------------------------------
+volumes:
+  mysql_data:
+    name: scholartwin_mysql_data
+  uploads_data:
+    name: scholartwin_uploads_data
+
+# ------------------------------------------------------------------------------
+# Isolated Internal Bridge Network
+# ------------------------------------------------------------------------------
+networks:
+  scholartwin-network:
+    name: scholartwin_internal_network
+    driver: bridge

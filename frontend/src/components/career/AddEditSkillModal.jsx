@@ -113,8 +113,18 @@ export default function AddEditSkillModal({ isOpen, onClose, onSuccess, initialD
           />
         </svg>
       }
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={isLoading}>
+            Cancel
+          </Button>
+          <Button type="submit" form="add-edit-skill-form" variant="primary" isLoading={isLoading}>
+            {isEdit ? 'Save Changes' : 'Add Skill'}
+          </Button>
+        </>
+      }
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form id="add-edit-skill-form" onSubmit={handleSubmit} className="space-y-4">
         {error && (
           <Alert variant="error" dismissible onDismiss={() => setError(null)}>
             {error}
@@ -197,15 +207,6 @@ export default function AddEditSkillModal({ isOpen, onClose, onSuccess, initialD
               disabled={isLoading}
             />
           </div>
-        </div>
-
-        <div className="flex justify-end gap-3 pt-3 border-t border-border-subtle">
-          <Button variant="secondary" onClick={onClose} disabled={isLoading}>
-            Cancel
-          </Button>
-          <Button type="submit" variant="primary" isLoading={isLoading}>
-            {isEdit ? 'Save Changes' : 'Add Skill'}
-          </Button>
         </div>
       </form>
     </Modal>

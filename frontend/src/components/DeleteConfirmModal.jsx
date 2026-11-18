@@ -27,16 +27,10 @@ export default function DeleteConfirmModal({
           />
         </svg>
       }
-    >
-      <div className="p-6 space-y-4">
-        <p className="text-xs sm:text-sm text-text-secondary leading-relaxed">
-          Are you sure you want to permanently delete{' '}
-          <strong className="text-text-primary">"{title}"</strong>? This action cannot be undone.
-        </p>
-
-        <div className="pt-3 flex items-center justify-end gap-3">
+      footer={
+        <>
           <Button
-            variant="ghost"
+            variant="secondary"
             size="sm"
             disabled={isDeleting}
             onClick={onClose}
@@ -52,8 +46,13 @@ export default function DeleteConfirmModal({
           >
             Delete Permanently
           </Button>
-        </div>
-      </div>
+        </>
+      }
+    >
+      <p className="text-xs sm:text-sm text-text-secondary leading-relaxed py-2">
+        Are you sure you want to permanently delete{' '}
+        <strong className="text-text-primary">"{title}"</strong>? This action cannot be undone.
+      </p>
     </Modal>
   );
 }

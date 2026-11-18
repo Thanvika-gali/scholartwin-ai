@@ -78,8 +78,60 @@ export default function KnowledgeItemViewModal({
         </span>
       }
       icon={icon}
+      footer={
+        <div className="w-full flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                onClose();
+                onEdit(item);
+              }}
+              icon={
+                <svg className="w-3.5 h-3.5 text-brand-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                  />
+                </svg>
+              }
+            >
+              Edit
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                onClose();
+                onDelete(item);
+              }}
+              className="text-status-error hover:text-red-700 hover:bg-status-error-bg/30"
+              icon={
+                <svg className="w-3.5 h-3.5 text-status-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+              }
+            >
+              Delete
+            </Button>
+          </div>
+
+          <Button variant="secondary" size="sm" onClick={onClose}>
+            Close
+          </Button>
+        </div>
+      }
     >
-      <div className="p-6 space-y-6">
+      <div className="space-y-6">
         {/* Link URL Banner (if LINK) */}
         {isLink && item.url && (
           <div className="p-4 rounded-xl bg-bg-surface-elevated/80 border border-border-default flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -155,58 +207,6 @@ export default function KnowledgeItemViewModal({
             <span>Last Modified: </span>
             <span className="font-mono text-text-secondary">{formatDate(item.updatedAt)}</span>
           </div>
-        </div>
-
-        {/* Footer Actions */}
-        <div className="pt-4 border-t border-border-subtle flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                onClose();
-                onEdit(item);
-              }}
-              icon={
-                <svg className="w-3.5 h-3.5 text-brand-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                  />
-                </svg>
-              }
-            >
-              Edit
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                onClose();
-                onDelete(item);
-              }}
-              className="text-status-error hover:text-red-700 hover:bg-status-error-bg/30"
-              icon={
-                <svg className="w-3.5 h-3.5 text-status-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                  />
-                </svg>
-              }
-            >
-              Delete
-            </Button>
-          </div>
-
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            Close
-          </Button>
         </div>
       </div>
     </Modal>

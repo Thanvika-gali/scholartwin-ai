@@ -109,10 +109,28 @@ export default function DocumentViewModal({
           {document.format}
         </div>
       }
+      footer={
+        <div className="w-full flex items-center justify-between">
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => onDeleted(document)}
+          >
+            Delete Document
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onClose}
+          >
+            Close
+          </Button>
+        </div>
+      }
     >
-      <div className="flex flex-col h-[75vh]">
+      <div className="flex flex-col space-y-4">
         {/* Navigation Tabs */}
-        <div className="px-6 pt-3 border-b border-border-subtle flex items-center justify-between gap-4 shrink-0 bg-bg-surface">
+        <div className="border-b border-border-subtle flex items-center justify-between gap-4 shrink-0 bg-bg-surface">
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -367,24 +385,6 @@ export default function DocumentViewModal({
               )}
             </div>
           )}
-        </div>
-
-        {/* Modal Footer */}
-        <div className="px-6 py-4 border-t border-border-subtle flex items-center justify-between gap-3 shrink-0 bg-bg-surface">
-          <Button
-            variant="danger"
-            size="sm"
-            onClick={() => onDeleted(document)}
-          >
-            Delete Document
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-          >
-            Close
-          </Button>
         </div>
       </div>
     </Modal>

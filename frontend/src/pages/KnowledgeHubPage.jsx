@@ -52,6 +52,7 @@ export default function KnowledgeHubPage() {
   const [activeView, setActiveView] = useState('ALL'); // 'ALL' | 'INBOX' | 'FAVORITES' | 'PINNED' | 'RECENT' | 'ARCHIVE' | 'FOLDER' | 'COLLECTION'
   const [selectedFolder, setSelectedFolder] = useState(null);
   const [selectedCollection, setSelectedCollection] = useState(null);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Data states
   const [resources, setResources] = useState([]);
@@ -97,10 +98,6 @@ export default function KnowledgeHubPage() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [resourceToDelete, setResourceToDelete] = useState(null);
 
-  // Duplicate prompt state
-  const [duplicateModalOpen, setDuplicateModalOpen] = useState(false);
-  const [duplicateInfo, setDuplicateInfo] = useState(null);
-
   // 1. Load Folders, Collections & Suggestions
   const loadSidebarData = useCallback(async () => {
     try {
@@ -119,58 +116,40 @@ export default function KnowledgeHubPage() {
     }
   }, []);
 
-  // 2. Load Resources based on active view, search, and filters
+  // 2. Load Resources
   const loadResources = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const params = {
-        type: selectedType,
-        sortBy,
-      };
-
+      let data = [];
       if (searchQuery.trim()) {
-        params.search = searchQuery.trim();
-      }
-
-      // Map active view to API params
-      if (activeView === 'INBOX') {
-        params.inboxOnly = true;
-      } else if (activeView === 'FAVORITES') {
-        params.favoriteOnly = true;
-      } else if (activeView === 'PINNED') {
-        params.pinnedOnly = true;
-      } else if (activeView === 'ARCHIVE') {
-        params.archivedOnly = true;
-      } else if (activeView === 'FOLDER' && selectedFolder) {
-        params.folderId = selectedFolder.id;
-      }
-
-      let data;
-      if (searchQuery.trim()) {
-        const searchResult = await searchKnowledgeApi({
+        data = await searchKnowledgeApi({
           q: searchQuery.trim(),
           type: selectedType,
-          folderId: activeView === 'FOLDER' && selectedFolder ? selectedFolder.id : undefined,
-          favoriteOnly: activeView === 'FAVORITES' ? true : undefined,
-          archivedOnly: activeView === 'ARCHIVE' ? true : undefined,
+          folderId: activeView === 'FOLDER' && selectedFolder ? selectedFolder.id : null,
+          favoriteOnly: activeView === 'FAVORITES',
+          archivedOnly: activeView === 'ARCHIVE',
           sortBy,
         });
-        data = searchResult.resources || [];
       } else {
-        data = await fetchKnowledgeResourcesApi(params);
+        data = await fetchKnowledgeResourcesApi({
+          type: selectedType,
+          folderId: activeView === 'FOLDER' && selectedFolder ? selectedFolder.id : null,
+          inboxOnly: activeView === 'INBOX',
+          favoriteOnly: activeView === 'FAVORITES',
+          pinnedOnly: activeView === 'PINNED',
+          archivedOnly: activeView === 'ARCHIVE',
+          sortBy,
+        });
       }
-
       setResources(Array.isArray(data) ? data : []);
-      setSelectedIds(new Set()); // reset selection on view/filter change
     } catch (err) {
-      setError(err.message || 'Unable to load resources.');
+      setError(err.message || 'Failed to load knowledge resources.');
     } finally {
       setIsLoading(false);
     }
-  }, [activeView, selectedFolder, selectedCollection, selectedType, searchQuery, sortBy]);
+  }, [activeView, selectedFolder, selectedCollection, searchQuery, selectedType, sortBy]);
 
-  // Initial load
   useEffect(() => {
     loadSidebarData();
   }, [loadSidebarData]);
@@ -179,7 +158,7 @@ export default function KnowledgeHubPage() {
     loadResources();
   }, [loadResources]);
 
-  // Navigation handlers
+  // View & Folder Switch Handlers
   const handleSelectView = (view) => {
     setActiveView(view);
     setSelectedFolder(null);
@@ -187,27 +166,27 @@ export default function KnowledgeHubPage() {
   };
 
   const handleSelectFolder = (folder) => {
-    setSelectedFolder(folder);
     setActiveView('FOLDER');
+    setSelectedFolder(folder);
     setSelectedCollection(null);
   };
 
-  const handleSelectCollection = (coll) => {
-    setSelectedCollection(coll);
+  const handleSelectCollection = (collection) => {
     setActiveView('COLLECTION');
+    setSelectedCollection(collection);
     setSelectedFolder(null);
   };
 
-  // Folder Actions
+  // Folder Operations
   const handleCreateRootFolder = () => {
     setEditingFolder(null);
     setParentFolderForCreate(null);
     setFolderModalOpen(true);
   };
 
-  const handleCreateSubfolder = (parent) => {
+  const handleCreateSubfolder = (parentFolder) => {
     setEditingFolder(null);
-    setParentFolderForCreate(parent);
+    setParentFolderForCreate(parentFolder);
     setFolderModalOpen(true);
   };
 
@@ -217,52 +196,66 @@ export default function KnowledgeHubPage() {
     setFolderModalOpen(true);
   };
 
+  const handleFolderSubmit = async (folderData) => {
+    try {
+      if (editingFolder) {
+        await updateFolderApi(editingFolder.id, folderData);
+      } else {
+        await createFolderApi(folderData);
+      }
+      setFolderModalOpen(false);
+      loadSidebarData();
+    } catch (err) {
+      alert(err.message || 'Failed to save folder');
+    }
+  };
+
   const handleDeleteFolderPrompt = (folder) => {
     setFolderToDelete(folder);
     setFolderDeleteModalOpen(true);
   };
 
-  const handleFolderSubmit = async (folderData) => {
-    if (editingFolder) {
-      await updateFolderApi(editingFolder.id, folderData);
-    } else {
-      await createFolderApi(folderData);
-    }
-    await loadSidebarData();
-    if (activeView === 'FOLDER') {
+  const handleFolderDeleteConfirm = async (reassignOption, targetFolderId) => {
+    if (!folderToDelete) return;
+    try {
+      await deleteFolderApi(folderToDelete.id, reassignOption, targetFolderId);
+      setFolderDeleteModalOpen(false);
+      setFolderToDelete(null);
+      if (selectedFolder && selectedFolder.id === folderToDelete.id) {
+        setActiveView('ALL');
+        setSelectedFolder(null);
+      }
+      loadSidebarData();
       loadResources();
+    } catch (err) {
+      alert(err.message || 'Failed to delete folder');
     }
   };
 
-  const handleFolderDeleteConfirm = async (id, reassignOption, targetFolderId) => {
-    await deleteFolderApi(id, reassignOption, targetFolderId);
-    if (selectedFolder && selectedFolder.id === id) {
-      setSelectedFolder(null);
-      setActiveView('ALL');
-    }
-    await loadSidebarData();
-    loadResources();
-  };
-
-  // Collections
+  // Collection Handlers
   const handleCreateCollection = () => {
     setCollectionModalOpen(true);
   };
 
   const handleCollectionSubmit = async (collData) => {
-    await createCollectionApi(collData);
-    await loadSidebarData();
+    try {
+      await createCollectionApi(collData);
+      setCollectionModalOpen(false);
+      loadSidebarData();
+    } catch (err) {
+      alert(err.message || 'Failed to create collection');
+    }
   };
 
-  // Resource Interactions
+  // Resource Selection & Details
   const handleSelectResource = (res) => {
     setSelectedResource(res);
   };
 
   const handleToggleSelect = (res) => {
+    const key = `${res.resourceType}-${res.id}`;
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      const key = `${res.resourceType}-${res.id}`;
       if (next.has(key)) {
         next.delete(key);
       } else {
@@ -272,15 +265,7 @@ export default function KnowledgeHubPage() {
     });
   };
 
-  const handleSelectAll = () => {
-    if (selectedIds.size === resources.length) {
-      setSelectedIds(new Set());
-    } else {
-      const all = new Set(resources.map((r) => `${r.resourceType}-${r.id}`));
-      setSelectedIds(all);
-    }
-  };
-
+  // Resource Actions
   const handleToggleFavorite = async (res) => {
     try {
       await toggleFavoriteResourceApi(res.resourceType, res.id);
@@ -488,7 +473,7 @@ export default function KnowledgeHubPage() {
   }, [activeView, selectedFolder, selectedCollection]);
 
   return (
-    <div className="flex bg-slate-50 dark:bg-slate-950 min-h-[calc(100vh-4rem)]">
+    <div className="flex bg-bg-page min-h-[calc(100vh-3.5rem)] text-text-primary transition-colors">
       {/* 1. Left Workspace Sidebar */}
       <KnowledgeSidebar
         activeView={activeView}
@@ -507,24 +492,37 @@ export default function KnowledgeHubPage() {
         inboxCount={suggestions.length}
         onOpenRules={() => setRulesModalOpen(true)}
         onOpenAnalytics={() => setAnalyticsModalOpen(true)}
+        isMobileOpen={mobileSidebarOpen}
+        onCloseMobile={() => setMobileSidebarOpen(false)}
       />
 
       {/* 2. Main Workspace Content Area */}
-      <main className="flex-1 min-w-0 p-6 overflow-y-auto">
+      <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 overflow-y-auto">
         {/* Breadcrumb & Action Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-          <div>
-            <div className="flex items-center gap-2 text-xs text-slate-400 mb-1">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-xs text-text-muted mb-1">
+              {/* Mobile Library Sidebar Drawer Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setMobileSidebarOpen(true)}
+                className="lg:hidden inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-bg-surface-elevated text-brand-teal font-semibold border border-border-default hover:bg-bg-surface-hover"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                </svg>
+                Folders
+              </button>
               <span>Library</span>
               <span>/</span>
-              <span className="font-semibold text-slate-600 dark:text-slate-300">{viewTitle}</span>
+              <span className="font-semibold text-text-secondary truncate">{viewTitle}</span>
             </div>
-            <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-black text-text-primary tracking-tight truncate">
               {viewTitle}
             </h1>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap shrink-0">
             <Button
               type="button"
               variant="outline"
@@ -534,7 +532,6 @@ export default function KnowledgeHubPage() {
                 setNoteDefaultType('LINK');
                 setNoteModalOpen(true);
               }}
-              className="text-xs"
             >
               + Save Link
             </Button>
@@ -547,7 +544,6 @@ export default function KnowledgeHubPage() {
                 setNoteDefaultType('NOTE');
                 setNoteModalOpen(true);
               }}
-              className="text-xs"
             >
               + New Note
             </Button>
@@ -556,12 +552,13 @@ export default function KnowledgeHubPage() {
               variant="primary"
               size="sm"
               onClick={() => setUploadModalOpen(true)}
-              className="text-xs bg-teal-600 hover:bg-teal-700 text-white flex items-center gap-1.5"
+              icon={
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+              }
             >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-              </svg>
-              Upload Document
+              Upload Document (100MB)
             </Button>
           </div>
         </div>
@@ -576,11 +573,11 @@ export default function KnowledgeHubPage() {
         />
 
         {/* Search, Filter & View Controls */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-6 bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-6 bg-bg-surface p-3 rounded-2xl border border-border-default shadow-card">
           {/* Search Input */}
           <div className="relative flex-1 max-w-md">
             <svg
-              className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"
+              className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-text-muted"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -591,24 +588,24 @@ export default function KnowledgeHubPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search documents, notes, links, tags, or extracted text..."
-              className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+              placeholder="Search documents, notes, links, tags, or OCR text..."
+              className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-border-default bg-bg-surface-elevated text-text-primary focus:outline-none focus:ring-1 focus:ring-brand-teal"
             />
           </div>
 
-          {/* Type Filters & Sorters */}
+          {/* Type Filters, Sorters & View Switch */}
           <div className="flex items-center gap-2 flex-wrap">
             {/* Type selector */}
-            <div className="flex rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5 text-xs font-semibold">
+            <div className="flex rounded-xl bg-bg-surface-elevated p-0.5 text-xs font-semibold border border-border-subtle">
               {['ALL', 'DOCUMENT', 'NOTE', 'LINK'].map((t) => (
                 <button
                   key={t}
                   type="button"
                   onClick={() => setSelectedType(t)}
-                  className={`px-2.5 py-1 rounded-md transition-colors ${
+                  className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
                     selectedType === t
-                      ? 'bg-white dark:bg-slate-700 text-teal-700 dark:text-teal-300 shadow-xs'
-                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                      ? 'bg-brand-teal text-white shadow-xs font-bold'
+                      : 'text-text-muted hover:text-text-primary'
                   }`}
                 >
                   {t === 'ALL' ? 'All Types' : t === 'DOCUMENT' ? 'Docs' : t === 'NOTE' ? 'Notes' : 'Links'}
@@ -620,26 +617,58 @@ export default function KnowledgeHubPage() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="px-2.5 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-teal-500"
+              className="px-2.5 py-1 text-xs rounded-xl border border-border-default bg-bg-surface-elevated text-text-primary focus:outline-none focus:ring-1 focus:ring-brand-teal"
             >
               <option value="RECENT_MODIFIED">Recently Modified</option>
               <option value="TITLE">Title (A-Z)</option>
               <option value="DATE_CREATED">Date Uploaded</option>
             </select>
+
+            {/* Grid / List View Switcher */}
+            <div className="flex items-center rounded-xl bg-bg-surface-elevated p-0.5 border border-border-subtle">
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={`p-1 rounded-lg transition-colors cursor-pointer ${
+                  viewMode === 'grid'
+                    ? 'bg-brand-teal text-white shadow-xs'
+                    : 'text-text-muted hover:text-text-primary'
+                }`}
+                title="Grid View"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                className={`p-1 rounded-lg transition-colors cursor-pointer ${
+                  viewMode === 'list'
+                    ? 'bg-brand-teal text-white shadow-xs'
+                    : 'text-text-muted hover:text-text-primary'
+                }`}
+                title="List View"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Resources Grid / List */}
         {error && (
           <div className="mb-6">
-            <Alert variant="danger" onClose={() => setError('')}>
+            <Alert variant="error" onClose={() => setError('')}>
               {error}
             </Alert>
           </div>
         )}
 
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4' : 'space-y-2.5'}>
             <CardSkeleton count={6} />
           </div>
         ) : resources.length === 0 ? (
@@ -650,7 +679,7 @@ export default function KnowledgeHubPage() {
                 ? `No materials matched "${searchQuery}". Try a different keyword.`
                 : activeView === 'INBOX'
                 ? 'Your Smart Inbox is clear! All items have been organized.'
-                : 'Upload PDFs or DOCX papers, create study notes, or save web links to build your knowledge base.'
+                : 'Upload PDFs or DOCX papers (up to 100MB), create study notes, or save web links to build your knowledge base.'
             }
             actionLabel={searchQuery ? 'Clear Search' : '+ Upload First Document'}
             onAction={
@@ -659,12 +688,31 @@ export default function KnowledgeHubPage() {
                 : () => setUploadModalOpen(true)
             }
           />
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        ) : viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {resources.map((res) => (
               <ResourceCard
                 key={`${res.resourceType}-${res.id}`}
                 resource={res}
+                viewMode="grid"
+                isSelected={selectedIds.has(`${res.resourceType}-${res.id}`)}
+                onToggleSelect={handleToggleSelect}
+                onSelectResource={handleSelectResource}
+                onToggleFavorite={handleToggleFavorite}
+                onTogglePin={handleTogglePin}
+                onToggleArchive={handleToggleArchive}
+                onDeleteResource={handleDeleteResourcePrompt}
+                onMoveResource={handleMoveResource}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {resources.map((res) => (
+              <ResourceCard
+                key={`${res.resourceType}-${res.id}`}
+                resource={res}
+                viewMode="list"
                 isSelected={selectedIds.has(`${res.resourceType}-${res.id}`)}
                 onToggleSelect={handleToggleSelect}
                 onSelectResource={handleSelectResource}
@@ -749,27 +797,28 @@ export default function KnowledgeHubPage() {
       <DocumentUploadModal
         isOpen={uploadModalOpen}
         onClose={() => setUploadModalOpen(false)}
-        folderId={activeView === 'FOLDER' && selectedFolder ? selectedFolder.id : null}
-        allFolders={flatFolders}
-        onUploaded={() => {
-          setUploadModalOpen(false);
+        onUploadSuccess={() => {
           loadResources();
           loadSidebarData();
         }}
+        allFolders={flatFolders}
       />
 
       <KnowledgeItemModal
         isOpen={noteModalOpen}
         onClose={() => setNoteModalOpen(false)}
-        defaultType={noteDefaultType}
-        initialItem={editingNoteItem}
-        folderId={activeView === 'FOLDER' && selectedFolder ? selectedFolder.id : null}
-        allFolders={flatFolders}
+        initialType={noteDefaultType}
+        editingItem={editingNoteItem}
         onSaved={() => {
-          setNoteModalOpen(false);
           loadResources();
           loadSidebarData();
         }}
+      />
+
+      <DocumentViewModal
+        isOpen={documentViewModalOpen}
+        onClose={() => setDocumentViewModalOpen(false)}
+        documentId={viewingDocumentId}
       />
 
       <DeleteConfirmModal

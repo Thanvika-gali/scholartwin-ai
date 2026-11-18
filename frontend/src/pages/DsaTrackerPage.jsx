@@ -126,7 +126,7 @@ export default function DsaTrackerPage() {
     setLoadingProblems(true);
     try {
       const data = await fetchDsaProblems(problemFilters);
-      setProblemsPage(data);
+      setProblemsPage(data || { content: [], totalElements: 0, totalPages: 0, number: 0 });
     } catch (err) {
       console.error('Failed to load DSA problems', err);
     } finally {
@@ -139,7 +139,7 @@ export default function DsaTrackerPage() {
     setLoadingTopics(true);
     try {
       const data = await fetchDsaTopics();
-      setTopics(data || []);
+      setTopics(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Failed to load DSA topics', err);
     } finally {
@@ -147,28 +147,23 @@ export default function DsaTrackerPage() {
     }
   }, []);
 
-  // Load Topic Problems
-  const loadTopicProblems = async (topicName) => {
-    setSelectedTopic(topicName);
-    setLoadingTopicProblems(true);
-    try {
-      const data = await fetchDsaTopicProblems(topicName);
-      setTopicProblems(data || []);
-    } catch (err) {
-      console.error('Failed to load problems for topic', err);
-    } finally {
-      setLoadingTopicProblems(false);
-    }
-  };
-
   // Load Revisions
   const loadRevisions = useCallback(async () => {
     setLoadingRevisions(true);
     try {
       const data = await fetchDsaRevisions();
-      setRevisionsQueue(data);
+      setRevisionsQueue(
+        data || {
+          overdue: [],
+          dueToday: [],
+          upcoming: [],
+          completed: [],
+          totalPendingCount: 0,
+          overdueCount: 0,
+        }
+      );
     } catch (err) {
-      console.error('Failed to load revisions queue', err);
+      console.error('Failed to load DSA revisions queue', err);
     } finally {
       setLoadingRevisions(false);
     }
@@ -178,55 +173,73 @@ export default function DsaTrackerPage() {
   const loadAnalytics = useCallback(async () => {
     setLoadingAnalytics(true);
     try {
-      const [diffData, activityData] = await Promise.all([
-        fetchDsaDifficultyAnalytics(),
-        fetchDsaActivityTimeline(14),
+      const [diffData, actData] = await Promise.all([
+        fetchDsaDifficultyAnalytics().catch(() => null),
+        fetchDsaActivityTimeline(14).catch(() => []),
       ]);
       setDifficultyAnalytics(diffData);
-      setActivityTimeline(activityData);
+      setActivityTimeline(Array.isArray(actData) ? actData : []);
     } catch (err) {
-      console.error('Failed to load analytics', err);
+      console.error('Failed to load DSA analytics', err);
     } finally {
       setLoadingAnalytics(false);
     }
   }, []);
 
-  // Trigger loading based on active tab
+  // Sync tab loading
   useEffect(() => {
-    loadDashboard();
-  }, [loadDashboard]);
+    if (currentTab === 'dashboard') loadDashboard();
+    if (currentTab === 'problems') loadProblems();
+    if (currentTab === 'topics') loadTopics();
+    if (currentTab === 'revisions') loadRevisions();
+    if (currentTab === 'analytics') loadAnalytics();
+  }, [currentTab, loadDashboard, loadProblems, loadTopics, loadRevisions, loadAnalytics]);
 
-  useEffect(() => {
-    if (currentTab === 'problems') {
-      loadProblems();
-    } else if (currentTab === 'topics') {
-      loadTopics();
-    } else if (currentTab === 'revisions') {
-      loadRevisions();
-    } else if (currentTab === 'analytics') {
-      loadAnalytics();
+  // Topic Drilldown
+  const handleSelectTopic = async (topicName) => {
+    setSelectedTopic(topicName);
+    setLoadingTopicProblems(true);
+    try {
+      const proms = await fetchDsaTopicProblems(topicName);
+      setTopicProblems(Array.isArray(proms) ? proms : []);
+    } catch (err) {
+      console.error('Failed to load topic problems', err);
+      setTopicProblems([]);
+    } finally {
+      setLoadingTopicProblems(false);
     }
-  }, [currentTab, loadProblems, loadTopics, loadRevisions, loadAnalytics]);
+  };
 
-  // Handle Problem Save (Create or Update)
-  const handleSaveProblem = async (formData) => {
+  // Open Problem Detail Modal
+  const openProblemDetail = async (id) => {
+    setIsDetailOpen(true);
+    setLoadingDetail(true);
+    try {
+      const detail = await fetchDsaProblem(id);
+      setActiveProblemDetail(detail);
+    } catch (err) {
+      console.error('Failed to load problem detail', err);
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
+
+  // Save Problem (Create or Update)
+  const handleSaveProblem = async (problemData) => {
     setIsSavingProblem(true);
     try {
       if (editingProblem && editingProblem.id) {
-        await updateDsaProblem(editingProblem.id, formData);
+        await updateDsaProblem(editingProblem.id, problemData);
         showFeedback('Problem updated successfully');
       } else {
-        await createDsaProblem(formData);
-        showFeedback('Problem tracked successfully');
+        await createDsaProblem(problemData);
+        showFeedback('New problem tracked in library');
       }
       setIsAddEditOpen(false);
       setEditingProblem(null);
       loadDashboard();
       if (currentTab === 'problems') loadProblems();
-      if (currentTab === 'topics') loadTopics();
-      if (activeProblemDetail && editingProblem?.id === activeProblemDetail.problem?.id) {
-        openProblemDetail(editingProblem.id);
-      }
+      if (currentTab === 'topics' && selectedTopic) handleSelectTopic(selectedTopic);
     } catch (err) {
       alert(err.message || 'Failed to save problem');
     } finally {
@@ -234,56 +247,31 @@ export default function DsaTrackerPage() {
     }
   };
 
-  // Handle Problem Delete
+  // Delete Problem
   const handleDeleteProblem = async (problem) => {
-    if (!window.confirm(`Are you sure you want to delete "${problem.title}"? All attempts and revisions will also be removed.`)) {
-      return;
-    }
+    if (!window.confirm(`Are you sure you want to delete "${problem.title}"?`)) return;
     try {
       await deleteDsaProblem(problem.id);
-      showFeedback('Problem removed');
+      showFeedback('Problem removed from tracker');
       setIsDetailOpen(false);
       loadDashboard();
       if (currentTab === 'problems') loadProblems();
-      if (currentTab === 'topics') {
-        loadTopics();
-        if (selectedTopic) loadTopicProblems(selectedTopic);
-      }
+      if (currentTab === 'topics' && selectedTopic) handleSelectTopic(selectedTopic);
     } catch (err) {
       alert(err.message || 'Failed to delete problem');
     }
   };
 
-  // Open Problem Detail Modal
-  const openProblemDetail = async (problemId) => {
-    setIsDetailOpen(true);
-    setLoadingDetail(true);
-    try {
-      const data = await fetchDsaProblem(problemId);
-      setActiveProblemDetail(data);
-    } catch (err) {
-      alert(err.message || 'Could not fetch problem details');
-      setIsDetailOpen(false);
-    } finally {
-      setLoadingDetail(false);
-    }
-  };
-
-  // Handle Save Attempt
+  // Save Practice Attempt
   const handleSaveAttempt = async (attemptData) => {
     if (!targetProblemForAttempt) return;
     setIsSavingAttempt(true);
     try {
       await logDsaAttempt(targetProblemForAttempt.id, attemptData);
-      showFeedback(
-        attemptData.outcome === 'SUCCESS'
-          ? '🎉 Solved! Streak incremented and accuracy updated.'
-          : 'Attempt recorded. Added to practice history.'
-      );
+      showFeedback('Practice attempt recorded');
       setIsAttemptOpen(false);
       loadDashboard();
       if (currentTab === 'problems') loadProblems();
-      if (currentTab === 'topics') loadTopics();
       if (isDetailOpen && activeProblemDetail?.problem?.id === targetProblemForAttempt.id) {
         openProblemDetail(targetProblemForAttempt.id);
       }
@@ -294,7 +282,7 @@ export default function DsaTrackerPage() {
     }
   };
 
-  // Handle Save Revision
+  // Schedule Revision
   const handleSaveRevision = async (revData) => {
     if (!targetProblemForRevision) return;
     setIsSavingRevision(true);
@@ -364,7 +352,7 @@ export default function DsaTrackerPage() {
   // Render Status Pill
   const renderStatusBadge = (status) => {
     const map = {
-      NOT_STARTED: 'bg-slate-500/15 text-slate-600 dark:text-slate-400 border-slate-500/30',
+      NOT_STARTED: 'bg-bg-surface-elevated text-text-muted border-border-default',
       ATTEMPTED: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30',
       SOLVED: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
     };
@@ -376,15 +364,15 @@ export default function DsaTrackerPage() {
   };
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
       {/* Toast Feedback */}
       {feedbackMessage && (
         <div
           role="status"
           aria-live="polite"
-          className="fixed bottom-6 right-6 z-50 bg-brand-navy border border-brand-teal text-white text-xs sm:text-sm font-medium py-3 px-4 rounded-xl shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200"
+          className="fixed bottom-6 right-6 z-50 bg-brand-navy border border-brand-teal text-white text-xs sm:text-sm font-medium py-3 px-4 rounded-xl shadow-modal flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200"
         >
-          <span className="w-2 h-2 rounded-full bg-brand-teal" />
+          <span className="w-2 h-2 rounded-full bg-brand-teal animate-pulse" />
           {feedbackMessage.text}
         </div>
       )}
@@ -399,15 +387,15 @@ export default function DsaTrackerPage() {
               </svg>
             </div>
             <h1 className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight">
-              DSA & Coding Tracker
+              DSA & Coding Progress Tracker
             </h1>
           </div>
           <p className="text-xs sm:text-sm text-text-muted mt-1">
-            Systematic algorithmic mastery, daily coding streaks, and spaced repetition revisions.
+            Algorithmic mastery across 20 canonical CS topics, daily practice streaks, and spaced repetition revisions.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 shrink-0">
           <Button
             variant="secondary"
             size="sm"
@@ -448,7 +436,7 @@ export default function DsaTrackerPage() {
           {
             id: 'revisions',
             label: 'Revision Queue',
-            badge: dashboardData?.pendingRevisionsCount > 0 ? dashboardData.pendingRevisionsCount : null,
+            badge: revisionsQueue?.totalPendingCount > 0 ? revisionsQueue.totalPendingCount : null,
           },
           { id: 'analytics', label: 'Visual Analytics' },
         ].map((tab) => {
@@ -460,8 +448,8 @@ export default function DsaTrackerPage() {
               onClick={() => setTab(tab.id)}
               className={`flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-t-xl transition-all cursor-pointer whitespace-nowrap ${
                 isActive
-                  ? 'bg-bg-surface text-brand-teal border-t-2 border-t-brand-teal border-x border-border-default shadow-sm -mb-px'
-                  : 'text-text-muted hover:text-text-primary hover:bg-bg-surface/50'
+                  ? 'bg-bg-surface text-brand-teal border-t-2 border-t-brand-teal border-x border-border-default shadow-xs -mb-px font-bold'
+                  : 'text-text-muted hover:text-text-primary hover:bg-bg-surface-elevated/40'
               }`}
             >
               <span>{tab.label}</span>
@@ -476,31 +464,27 @@ export default function DsaTrackerPage() {
       </div>
 
       {/* =========================================================================
-          TAB 1: DASHBOARD
+          TAB 1: DASHBOARD & STREAKS
          ========================================================================= */}
       {currentTab === 'dashboard' && (
         <div className="space-y-6">
-          {/* Key Stat Cards */}
+          {/* Key Metric Banner */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {/* Total Problems Tracked */}
-            <Card>
+            <Card hover>
               <CardContent className="p-4 sm:p-5 flex items-center justify-between">
                 <div>
-                  <span className="text-xs font-semibold text-text-muted uppercase tracking-wider block">
+                  <span className="text-xs font-bold text-text-muted uppercase tracking-wider block">
                     Total Tracked
                   </span>
-                  <span className="text-2xl font-bold text-text-primary mt-1 block">
+                  <span className="text-2xl font-black text-text-primary mt-1 block">
                     {dashboardData?.totalProblems || 0}
                   </span>
                   <span className="text-[11px] text-text-muted mt-0.5 block">
-                    {dashboardData?.solvedProblems || 0} solved (
-                    {dashboardData?.totalProblems
-                      ? Math.round((dashboardData.solvedProblems / dashboardData.totalProblems) * 100)
-                      : 0}
-                    %)
+                    {dashboardData?.solvedProblems || 0} solved ({dashboardData?.totalProblems ? Math.round((dashboardData.solvedProblems / dashboardData.totalProblems) * 100) : 0}%)
                   </span>
                 </div>
-                <div className="w-10 h-10 rounded-xl bg-brand-teal/15 text-brand-teal flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-brand-teal/15 text-brand-teal flex items-center justify-center border border-brand-teal/20">
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
@@ -509,23 +493,23 @@ export default function DsaTrackerPage() {
             </Card>
 
             {/* Current Streak */}
-            <Card>
+            <Card hover>
               <CardContent className="p-4 sm:p-5 flex items-center justify-between">
                 <div>
-                  <span className="text-xs font-semibold text-text-muted uppercase tracking-wider block">
+                  <span className="text-xs font-bold text-text-muted uppercase tracking-wider block">
                     Practice Streak
                   </span>
                   <div className="flex items-baseline gap-1 mt-1">
-                    <span className="text-2xl font-bold text-amber-500">
+                    <span className="text-2xl font-black text-amber-500">
                       {dashboardData?.currentStreakDays || 0}
                     </span>
-                    <span className="text-xs font-semibold text-text-secondary">days</span>
+                    <span className="text-xs font-bold text-text-secondary uppercase">days</span>
                   </div>
                   <span className="text-[11px] text-text-muted mt-0.5 block">
                     Best: {dashboardData?.longestStreakDays || 0} days
                   </span>
                 </div>
-                <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-500 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-500 flex items-center justify-center border border-amber-500/20">
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 .587l3.668 7.431 8.2 1.192-5.934 5.784 1.399 8.163-7.333-3.856-7.333 3.856 1.399-8.163-5.934-5.784 8.2-1.192zm0 5.702l-2.223 4.503-4.97.722 3.596 3.505-.848 4.947 4.445-2.337 4.445 2.337-.848-4.947 3.596-3.505-4.97-.722z" />
                   </svg>
@@ -534,22 +518,22 @@ export default function DsaTrackerPage() {
             </Card>
 
             {/* Overall Accuracy */}
-            <Card>
+            <Card hover>
               <CardContent className="p-4 sm:p-5 flex items-center justify-between">
                 <div>
-                  <span className="text-xs font-semibold text-text-muted uppercase tracking-wider block">
+                  <span className="text-xs font-bold text-text-muted uppercase tracking-wider block">
                     Overall Accuracy
                   </span>
-                  <span className="text-2xl font-bold text-brand-teal mt-1 block">
+                  <span className="text-2xl font-black text-brand-teal mt-1 block">
                     {dashboardData?.overallAccuracyPercent !== undefined
                       ? `${dashboardData.overallAccuracyPercent}%`
                       : '0%'}
                   </span>
                   <span className="text-[11px] text-text-muted mt-0.5 block">
-                    Across all logged attempts
+                    Across logged attempts
                   </span>
                 </div>
-                <div className="w-10 h-10 rounded-xl bg-brand-teal/15 text-brand-teal flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-brand-teal/15 text-brand-teal flex items-center justify-center border border-brand-teal/20">
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
@@ -558,20 +542,20 @@ export default function DsaTrackerPage() {
             </Card>
 
             {/* Revisions Queued */}
-            <Card>
+            <Card hover>
               <CardContent className="p-4 sm:p-5 flex items-center justify-between">
                 <div>
-                  <span className="text-xs font-semibold text-text-muted uppercase tracking-wider block">
+                  <span className="text-xs font-bold text-text-muted uppercase tracking-wider block">
                     Due Revisions
                   </span>
-                  <span className="text-2xl font-bold text-brand-gold mt-1 block">
+                  <span className="text-2xl font-black text-brand-gold mt-1 block">
                     {dashboardData?.pendingRevisionsCount || 0}
                   </span>
-                  <span className="text-[11px] text-rose-500 font-medium mt-0.5 block">
+                  <span className="text-[11px] text-rose-500 font-semibold mt-0.5 block">
                     {dashboardData?.overdueRevisionsCount || 0} overdue
                   </span>
                 </div>
-                <div className="w-10 h-10 rounded-xl bg-brand-gold/15 text-brand-gold flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-brand-gold/15 text-brand-gold flex items-center justify-center border border-brand-gold/20">
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -580,198 +564,153 @@ export default function DsaTrackerPage() {
             </Card>
           </div>
 
-          {/* Difficulty Tier Stats */}
+          {/* Difficulty Tier Progress Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-bg-surface border border-emerald-500/20 rounded-2xl p-4 flex items-center justify-between">
-              <div>
-                <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
-                  Easy
+            <div className="bg-bg-surface border border-emerald-500/30 rounded-2xl p-4 flex flex-col justify-between shadow-xs">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                  Easy Problems
                 </span>
-                <div className="text-xl font-bold text-text-primary mt-1">
-                  {dashboardData?.easySolved || 0}{' '}
-                  <span className="text-xs text-text-muted font-normal">/ {dashboardData?.easyTotal || 0}</span>
-                </div>
+                <span className="text-sm font-bold text-text-primary">
+                  {dashboardData?.easySolved || 0} / {dashboardData?.easyTotal || 0}
+                </span>
               </div>
-              <div className="w-12 h-2 rounded-full bg-emerald-500/20 overflow-hidden">
+              <div className="w-full h-2 rounded-full bg-emerald-500/15 overflow-hidden">
                 <div
                   style={{
-                    width: `${
-                      dashboardData?.easyTotal
-                        ? (dashboardData.easySolved / dashboardData.easyTotal) * 100
-                        : 0
-                    }%`,
+                    width: `${dashboardData?.easyTotal ? (dashboardData.easySolved / dashboardData.easyTotal) * 100 : 0}%`,
                   }}
-                  className="h-full bg-emerald-500"
+                  className="h-full bg-emerald-500 rounded-full transition-all"
                 />
               </div>
             </div>
 
-            <div className="bg-bg-surface border border-amber-500/20 rounded-2xl p-4 flex items-center justify-between">
-              <div>
-                <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
-                  Medium
+            <div className="bg-bg-surface border border-amber-500/30 rounded-2xl p-4 flex flex-col justify-between shadow-xs">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                  Medium Problems
                 </span>
-                <div className="text-xl font-bold text-text-primary mt-1">
-                  {dashboardData?.mediumSolved || 0}{' '}
-                  <span className="text-xs text-text-muted font-normal">/ {dashboardData?.mediumTotal || 0}</span>
-                </div>
+                <span className="text-sm font-bold text-text-primary">
+                  {dashboardData?.mediumSolved || 0} / {dashboardData?.mediumTotal || 0}
+                </span>
               </div>
-              <div className="w-12 h-2 rounded-full bg-amber-500/20 overflow-hidden">
+              <div className="w-full h-2 rounded-full bg-amber-500/15 overflow-hidden">
                 <div
                   style={{
-                    width: `${
-                      dashboardData?.mediumTotal
-                        ? (dashboardData.mediumSolved / dashboardData.mediumTotal) * 100
-                        : 0
-                    }%`,
+                    width: `${dashboardData?.mediumTotal ? (dashboardData.mediumSolved / dashboardData.mediumTotal) * 100 : 0}%`,
                   }}
-                  className="h-full bg-amber-500"
+                  className="h-full bg-amber-500 rounded-full transition-all"
                 />
               </div>
             </div>
 
-            <div className="bg-bg-surface border border-rose-500/20 rounded-2xl p-4 flex items-center justify-between">
-              <div>
-                <span className="text-xs font-semibold text-rose-600 dark:text-rose-400 uppercase tracking-wider">
-                  Hard
+            <div className="bg-bg-surface border border-rose-500/30 rounded-2xl p-4 flex flex-col justify-between shadow-xs">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">
+                  Hard Problems
                 </span>
-                <div className="text-xl font-bold text-text-primary mt-1">
-                  {dashboardData?.hardSolved || 0}{' '}
-                  <span className="text-xs text-text-muted font-normal">/ {dashboardData?.hardTotal || 0}</span>
-                </div>
+                <span className="text-sm font-bold text-text-primary">
+                  {dashboardData?.hardSolved || 0} / {dashboardData?.hardTotal || 0}
+                </span>
               </div>
-              <div className="w-12 h-2 rounded-full bg-rose-500/20 overflow-hidden">
+              <div className="w-full h-2 rounded-full bg-rose-500/15 overflow-hidden">
                 <div
                   style={{
-                    width: `${
-                      dashboardData?.hardTotal
-                        ? (dashboardData.hardSolved / dashboardData.hardTotal) * 100
-                        : 0
-                    }%`,
+                    width: `${dashboardData?.hardTotal ? (dashboardData.hardSolved / dashboardData.hardTotal) * 100 : 0}%`,
                   }}
-                  className="h-full bg-rose-500"
+                  className="h-full bg-rose-500 rounded-full transition-all"
                 />
               </div>
             </div>
           </div>
 
-          {/* Rule-Based Dynamic Insights */}
-          {dashboardData?.insights && dashboardData.insights.length > 0 && (
-            <div className="bg-brand-navy border border-brand-teal/40 rounded-2xl p-5 text-white shadow-card">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-7 h-7 rounded-lg bg-brand-teal text-brand-navy flex items-center justify-center font-bold text-xs">
-                  AI
-                </div>
-                <h3 className="text-sm font-bold tracking-tight text-brand-gold-light">
-                  Rule-Based Practice Insights
-                </h3>
-              </div>
-              <div className="space-y-2">
-                {dashboardData.insights.map((insight, idx) => (
-                  <div key={idx} className="flex items-start gap-2.5 text-xs text-slate-200">
-                    <span className="text-brand-teal font-bold mt-0.5">•</span>
-                    <p className="leading-relaxed">{insight}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Split View: Recently Solved & Recent Attempts */}
+          {/* Quick Problem Launch & Practice Radar */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Recently Solved */}
+            {/* Recent Problems Card */}
             <Card>
-              <CardHeader className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Recently Solved</CardTitle>
-                  <CardDescription>Problems successfully mastered</CardDescription>
-                </div>
-                <Button size="sm" variant="ghost" onClick={() => setTab('problems')}>
-                  View All →
-                </Button>
+              <CardHeader className="flex items-center justify-between pb-3">
+                <CardTitle className="text-base font-bold">Recent Tracked Problems</CardTitle>
+                <button
+                  onClick={() => setTab('problems')}
+                  className="text-xs font-semibold text-brand-teal hover:underline cursor-pointer"
+                >
+                  View All Problems →
+                </button>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {dashboardData?.recentlySolved && dashboardData.recentlySolved.length > 0 ? (
-                  dashboardData.recentlySolved.map((p) => (
-                    <div
-                      key={p.id}
-                      className="p-3 bg-bg-surface-elevated/50 border border-border-default rounded-xl flex items-center justify-between gap-3 hover:border-brand-teal/40 transition-colors"
-                    >
-                      <div className="min-w-0">
-                        <button
-                          type="button"
-                          onClick={() => openProblemDetail(p.id)}
-                          className="text-xs sm:text-sm font-semibold text-text-primary hover:text-brand-teal truncate block text-left cursor-pointer"
-                        >
-                          {p.title}
-                        </button>
-                        <div className="flex items-center gap-2 mt-1">
+              <CardContent className="p-4 pt-1">
+                {!dashboardData?.recentProblems || dashboardData.recentProblems.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-text-muted">
+                    No problems logged yet. Click &quot;Add Problem&quot; to begin tracking.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border-subtle">
+                    {dashboardData.recentProblems.slice(0, 5).map((p) => (
+                      <div
+                        key={p.id}
+                        className="py-2.5 flex items-center justify-between gap-3 hover:bg-bg-surface-hover px-2 rounded-lg transition-colors"
+                      >
+                        <div className="min-w-0">
+                          <button
+                            type="button"
+                            onClick={() => openProblemDetail(p.id)}
+                            className="text-xs font-bold text-text-primary hover:text-brand-teal truncate block text-left cursor-pointer"
+                          >
+                            {p.title}
+                          </button>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[10px] text-text-muted">{p.primaryTopic}</span>
+                            <span>•</span>
+                            <span className="text-[10px] text-text-muted">{p.platform}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
                           {renderDifficultyBadge(p.difficulty)}
-                          <span className="text-[11px] text-text-muted">{p.primaryTopic}</span>
+                          {renderStatusBadge(p.status)}
                         </div>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => {
-                          setTargetProblemForAttempt(p);
-                          setIsAttemptOpen(true);
-                        }}
-                      >
-                        Log
-                      </Button>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-text-muted text-xs">
-                    No solved problems yet. Solve your first problem to start your streak!
+                    ))}
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            {/* Recent Attempts */}
+            {/* Practice Recommendations & Spaced Repetition Alert */}
             <Card>
-              <CardHeader className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Recent Attempts</CardTitle>
-                  <CardDescription>Latest problem-solving activity</CardDescription>
-                </div>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-bold">Spaced Repetition Radar</CardTitle>
+                <CardDescription className="text-xs">
+                  Active recall triggers based on past attempts and review dates
+                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {dashboardData?.recentlyAttempted && dashboardData.recentlyAttempted.length > 0 ? (
-                  dashboardData.recentlyAttempted.map((att) => (
-                    <div
-                      key={att.id}
-                      className="p-3 bg-bg-surface-elevated/50 border border-border-default rounded-xl flex items-center justify-between gap-3"
-                    >
-                      <div className="min-w-0">
-                        <span className="text-xs font-semibold text-text-primary truncate block">
-                          {att.problemTitle}
-                        </span>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span
-                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                              att.outcome === 'SUCCESS'
-                                ? 'bg-emerald-500/15 text-emerald-600'
-                                : 'bg-amber-500/15 text-amber-600'
-                            }`}
-                          >
-                            {att.outcome}
-                          </span>
-                          <span className="text-[11px] text-text-muted">
-                            {att.attemptDate} {att.timeSpentMinutes ? `• ${att.timeSpentMinutes}m` : ''}
-                          </span>
-                        </div>
-                      </div>
-                      <span className="text-[11px] font-mono text-text-secondary">
-                        {att.programmingLanguage || 'Code'}
-                      </span>
+              <CardContent className="p-4 pt-1">
+                {dashboardData?.overdueRevisionsCount > 0 ? (
+                  <div className="p-4 rounded-xl bg-status-error-bg/30 border border-status-error-border space-y-2">
+                    <div className="flex items-center gap-2 text-status-error-text font-bold text-xs">
+                      <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                      {dashboardData.overdueRevisionsCount} Overdue Revision Tasks
                     </div>
-                  ))
+                    <p className="text-[11px] text-text-muted leading-relaxed">
+                      You have spaced repetition reviews that were scheduled for earlier dates. Completing them reinforces long-term algorithm retention for coding interviews.
+                    </p>
+                    <Button
+                      variant="primary"
+                      size="xs"
+                      onClick={() => setTab('revisions')}
+                    >
+                      Open Revision Queue
+                    </Button>
+                  </div>
                 ) : (
-                  <div className="text-center py-8 text-text-muted text-xs">
-                    No attempts logged yet. Select a problem and click &quot;Log Attempt&quot;.
+                  <div className="py-8 text-center text-xs text-text-muted space-y-2">
+                    <p className="font-semibold text-text-primary">No overdue review alerts</p>
+                    <p className="text-[11px]">Flag tricky LeetCode problems with &quot;Revision Required&quot; to automate your recall schedule.</p>
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      onClick={() => setTab('problems')}
+                    >
+                      Browse Problems
+                    </Button>
                   </div>
                 )}
               </CardContent>
@@ -781,25 +720,34 @@ export default function DsaTrackerPage() {
       )}
 
       {/* =========================================================================
-          TAB 2: ALL PROBLEMS EXPLORER
+          TAB 2: ALL PROBLEMS (RESPONSIVE DUAL PRESENTATION)
          ========================================================================= */}
       {currentTab === 'problems' && (
         <div className="space-y-4">
           {/* Filter Bar */}
           <Card>
             <CardContent className="p-4 space-y-3">
+              {/* Search + Topic + Platform + Difficulty */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 {/* Search */}
-                <div>
+                <div className="relative">
                   <input
                     type="text"
-                    placeholder="Search by title or notes..."
+                    placeholder="Search problems..."
                     value={problemFilters.search}
                     onChange={(e) =>
                       setProblemFilters({ ...problemFilters, search: e.target.value, page: 0 })
                     }
-                    className="w-full bg-bg-surface-elevated border border-border-default rounded-xl px-3 py-2 text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-teal"
+                    className="w-full bg-bg-surface-elevated border border-border-default rounded-xl pl-9 pr-3 py-2 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-brand-teal"
                   />
+                  <svg
+                    className="w-4 h-4 text-text-muted absolute left-3 top-2.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
                 </div>
 
                 {/* Topic */}
@@ -809,12 +757,12 @@ export default function DsaTrackerPage() {
                     onChange={(e) =>
                       setProblemFilters({ ...problemFilters, topic: e.target.value, page: 0 })
                     }
-                    className="w-full bg-bg-surface-elevated border border-border-default rounded-xl px-3 py-2 text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-teal"
+                    className="w-full bg-bg-surface-elevated border border-border-default rounded-xl px-3 py-2 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-brand-teal"
                   >
-                    <option value="">All Topics (20)</option>
-                    {DSA_TOPICS.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
+                    <option value="">All Topics (20 Topics)</option>
+                    {DSA_TOPICS.map((topic) => (
+                      <option key={topic} value={topic}>
+                        {topic}
                       </option>
                     ))}
                   </select>
@@ -827,7 +775,7 @@ export default function DsaTrackerPage() {
                     onChange={(e) =>
                       setProblemFilters({ ...problemFilters, difficulty: e.target.value, page: 0 })
                     }
-                    className="w-full bg-bg-surface-elevated border border-border-default rounded-xl px-3 py-2 text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-teal"
+                    className="w-full bg-bg-surface-elevated border border-border-default rounded-xl px-3 py-2 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-brand-teal"
                   >
                     <option value="">All Difficulties</option>
                     {DSA_DIFFICULTIES.map((d) => (
@@ -845,7 +793,7 @@ export default function DsaTrackerPage() {
                     onChange={(e) =>
                       setProblemFilters({ ...problemFilters, status: e.target.value, page: 0 })
                     }
-                    className="w-full bg-bg-surface-elevated border border-border-default rounded-xl px-3 py-2 text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-teal"
+                    className="w-full bg-bg-surface-elevated border border-border-default rounded-xl px-3 py-2 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-brand-teal"
                   >
                     <option value="">All Statuses</option>
                     {DSA_STATUSES.map((s) => (
@@ -858,23 +806,21 @@ export default function DsaTrackerPage() {
               </div>
 
               <div className="flex items-center justify-between pt-2 border-t border-border-subtle text-xs text-text-muted">
-                <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-1.5 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={problemFilters.revisionRequired === true}
-                      onChange={(e) =>
-                        setProblemFilters({
-                          ...problemFilters,
-                          revisionRequired: e.target.checked ? true : '',
-                          page: 0,
-                        })
-                      }
-                      className="rounded border-border-default text-brand-teal focus:ring-brand-teal"
-                    />
-                    <span>Revision Required Only</span>
-                  </label>
-                </div>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={problemFilters.revisionRequired === true}
+                    onChange={(e) =>
+                      setProblemFilters({
+                        ...problemFilters,
+                        revisionRequired: e.target.checked ? true : '',
+                        page: 0,
+                      })
+                    }
+                    className="rounded border-border-default text-brand-teal focus:ring-brand-teal cursor-pointer"
+                  />
+                  <span>Revision Required Only</span>
+                </label>
 
                 <span>
                   Showing {problemsPage.content?.length || 0} of {problemsPage.totalElements || 0} problems
@@ -883,172 +829,237 @@ export default function DsaTrackerPage() {
             </CardContent>
           </Card>
 
-          {/* Problems Table */}
-          <Card>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-bg-surface-elevated/70 border-b border-border-default text-text-secondary uppercase tracking-wider font-semibold">
-                  <tr>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4">Title</th>
-                    <th className="py-3 px-4">Difficulty</th>
-                    <th className="py-3 px-4">Topic</th>
-                    <th className="py-3 px-4">Platform</th>
-                    <th className="py-3 px-4">Attempts / Acc</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border-subtle">
-                  {loadingProblems ? (
+          {/* Desktop Table View (>= md:) */}
+          <div className="hidden md:block">
+            <Card>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-bg-surface-elevated/70 border-b border-border-default text-text-secondary uppercase tracking-wider font-semibold">
                     <tr>
-                      <td colSpan={7} className="py-12 text-center text-text-muted">
-                        Loading problems...
-                      </td>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4">Title</th>
+                      <th className="py-3 px-4">Difficulty</th>
+                      <th className="py-3 px-4">Topic</th>
+                      <th className="py-3 px-4">Platform</th>
+                      <th className="py-3 px-4">Attempts / Acc</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
-                  ) : problemsPage.content?.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="py-12 text-center">
-                        <EmptyState
-                          title="No problems found"
-                          description="Try clearing your filters or add a new DSA problem to your tracker."
-                          actionLabel="Add Problem"
-                          onAction={() => {
-                            setEditingProblem(null);
-                            setIsAddEditOpen(true);
-                          }}
-                        />
-                      </td>
-                    </tr>
-                  ) : (
-                    problemsPage.content.map((p) => (
-                      <tr key={p.id} className="hover:bg-bg-surface-hover transition-colors">
-                        <td className="py-3.5 px-4 whitespace-nowrap">
-                          {renderStatusBadge(p.status)}
-                        </td>
-                        <td className="py-3.5 px-4 font-semibold text-text-primary">
-                          <button
-                            type="button"
-                            onClick={() => openProblemDetail(p.id)}
-                            className="hover:text-brand-teal text-left cursor-pointer truncate max-w-xs block"
-                          >
-                            {p.title}
-                          </button>
-                        </td>
-                        <td className="py-3.5 px-4 whitespace-nowrap">
-                          {renderDifficultyBadge(p.difficulty)}
-                        </td>
-                        <td className="py-3.5 px-4 whitespace-nowrap text-text-secondary">
-                          {p.primaryTopic}
-                        </td>
-                        <td className="py-3.5 px-4 whitespace-nowrap text-text-muted">
-                          {p.platform}
-                        </td>
-                        <td className="py-3.5 px-4 whitespace-nowrap text-text-secondary">
-                          {p.attemptCount || 0} ({p.successRatePercent || 0}%)
-                        </td>
-                        <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setTargetProblemForAttempt(p);
-                                setIsAttemptOpen(true);
-                              }}
-                              className="px-2 py-1 rounded-md text-xs font-semibold bg-brand-teal/15 text-brand-teal hover:bg-brand-teal/25 transition-colors cursor-pointer"
-                              title="Log Attempt"
-                            >
-                              Log
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setTargetProblemForRevision(p);
-                                setIsRevisionOpen(true);
-                              }}
-                              className="px-2 py-1 rounded-md text-xs font-semibold bg-brand-gold/15 text-amber-800 dark:text-brand-gold-light hover:bg-brand-gold/25 transition-colors cursor-pointer"
-                              title="Schedule Revision"
-                            >
-                              Revise
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditingProblem(p);
-                                setIsAddEditOpen(true);
-                              }}
-                              className="p-1 text-text-muted hover:text-text-primary transition-colors cursor-pointer"
-                              title="Edit"
-                            >
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                              </svg>
-                            </button>
-                          </div>
+                  </thead>
+                  <tbody className="divide-y divide-border-subtle">
+                    {loadingProblems ? (
+                      <tr>
+                        <td colSpan={7} className="py-12 text-center text-text-muted">
+                          Loading problems...
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination Controls */}
-            {problemsPage.totalPages > 1 && (
-              <div className="p-4 border-t border-border-subtle flex items-center justify-between text-xs">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  disabled={problemsPage.number === 0}
-                  onClick={() =>
-                    setProblemFilters({ ...problemFilters, page: problemFilters.page - 1 })
-                  }
-                >
-                  Previous
-                </Button>
-                <span className="text-text-muted">
-                  Page {problemsPage.number + 1} of {problemsPage.totalPages}
-                </span>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  disabled={problemsPage.number >= problemsPage.totalPages - 1}
-                  onClick={() =>
-                    setProblemFilters({ ...problemFilters, page: problemFilters.page + 1 })
-                  }
-                >
-                  Next
-                </Button>
+                    ) : problemsPage.content?.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-12 text-center">
+                          <EmptyState
+                            title="No problems found"
+                            description="Try clearing your filters or track a new DSA problem."
+                            actionLabel="Add Problem"
+                            onAction={() => {
+                              setEditingProblem(null);
+                              setIsAddEditOpen(true);
+                            }}
+                          />
+                        </td>
+                      </tr>
+                    ) : (
+                      problemsPage.content.map((p) => (
+                        <tr key={p.id} className="hover:bg-bg-surface-hover transition-colors">
+                          <td className="py-3.5 px-4 whitespace-nowrap">
+                            {renderStatusBadge(p.status)}
+                          </td>
+                          <td className="py-3.5 px-4 font-semibold text-text-primary">
+                            <button
+                              type="button"
+                              onClick={() => openProblemDetail(p.id)}
+                              className="hover:text-brand-teal text-left cursor-pointer truncate max-w-xs block font-bold"
+                            >
+                              {p.title}
+                            </button>
+                          </td>
+                          <td className="py-3.5 px-4 whitespace-nowrap">
+                            {renderDifficultyBadge(p.difficulty)}
+                          </td>
+                          <td className="py-3.5 px-4 whitespace-nowrap text-text-secondary">
+                            {p.primaryTopic}
+                          </td>
+                          <td className="py-3.5 px-4 whitespace-nowrap text-text-muted">
+                            {p.platform}
+                          </td>
+                          <td className="py-3.5 px-4 whitespace-nowrap text-text-secondary font-mono text-[11px]">
+                            {p.attemptCount || 0} att. ({p.successRatePercent || 0}%)
+                          </td>
+                          <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <Button
+                                variant="outline"
+                                size="xs"
+                                onClick={() => {
+                                  setTargetProblemForAttempt(p);
+                                  setIsAttemptOpen(true);
+                                }}
+                              >
+                                Log
+                              </Button>
+                              <Button
+                                variant="teal-subtle"
+                                size="xs"
+                                onClick={() => {
+                                  setTargetProblemForRevision(p);
+                                  setIsRevisionOpen(true);
+                                }}
+                              >
+                                Review
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="xs"
+                                onClick={() => openProblemDetail(p.id)}
+                              >
+                                Details
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
+            </Card>
+          </div>
+
+          {/* Mobile Card Layout (< md:) */}
+          <div className="md:hidden space-y-3">
+            {loadingProblems ? (
+              <div className="py-8 text-center text-xs text-text-muted">Loading problems...</div>
+            ) : problemsPage.content?.length === 0 ? (
+              <EmptyState
+                title="No problems found"
+                description="Try clearing your filters or add a new DSA problem."
+                actionLabel="Add Problem"
+                onAction={() => {
+                  setEditingProblem(null);
+                  setIsAddEditOpen(true);
+                }}
+              />
+            ) : (
+              problemsPage.content.map((p) => (
+                <div
+                  key={p.id}
+                  className="p-4 rounded-2xl bg-bg-surface border border-border-default shadow-card space-y-2.5"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => openProblemDetail(p.id)}
+                      className="text-sm font-bold text-text-primary hover:text-brand-teal text-left cursor-pointer truncate flex-1"
+                    >
+                      {p.title}
+                    </button>
+                    {renderDifficultyBadge(p.difficulty)}
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap text-[11px]">
+                    {renderStatusBadge(p.status)}
+                    <span className="px-2 py-0.5 rounded-md bg-bg-surface-elevated text-text-secondary border border-border-subtle font-medium">
+                      {p.primaryTopic}
+                    </span>
+                    <span className="text-text-muted">{p.platform}</span>
+                    <span className="text-text-muted font-mono ml-auto">
+                      {p.attemptCount || 0} att. ({p.successRatePercent || 0}%)
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-border-subtle">
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      onClick={() => {
+                        setTargetProblemForAttempt(p);
+                        setIsAttemptOpen(true);
+                      }}
+                    >
+                      Log Attempt
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="xs"
+                      onClick={() => openProblemDetail(p.id)}
+                    >
+                      Details →
+                    </Button>
+                  </div>
+                </div>
+              ))
             )}
-          </Card>
+          </div>
+
+          {/* Pagination Controls */}
+          {problemsPage.totalPages > 1 && (
+            <div className="flex items-center justify-between p-3 bg-bg-surface border border-border-default rounded-xl text-xs">
+              <Button
+                variant="outline"
+                size="xs"
+                disabled={problemsPage.number === 0}
+                onClick={() =>
+                  setProblemFilters({ ...problemFilters, page: problemsPage.number - 1 })
+                }
+              >
+                Previous Page
+              </Button>
+              <span className="text-text-muted">
+                Page {problemsPage.number + 1} of {problemsPage.totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="xs"
+                disabled={problemsPage.number + 1 >= problemsPage.totalPages}
+                onClick={() =>
+                  setProblemFilters({ ...problemFilters, page: problemsPage.number + 1 })
+                }
+              >
+                Next Page
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
       {/* =========================================================================
-          TAB 3: TOPIC MASTERY (20 TOPICS MATRIX)
+          TAB 3: TOPIC MASTERY
          ========================================================================= */}
       {currentTab === 'topics' && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
             {loadingTopics ? (
               <div className="col-span-full py-12 text-center text-text-muted text-xs">
-                Loading topic mastery matrix...
+                Loading 20 CS topics...
+              </div>
+            ) : topics.length === 0 ? (
+              <div className="col-span-full py-12 text-center text-text-muted text-xs">
+                No topics loaded yet.
               </div>
             ) : (
               topics.map((t) => {
                 const completion = t.completionPercentage || 0;
+                const isSelected = selectedTopic === t.topicName;
                 return (
                   <div
                     key={t.topicName}
-                    onClick={() => loadTopicProblems(t.topicName)}
-                    className={`p-4 bg-bg-surface border rounded-2xl cursor-pointer transition-all hover:shadow-card-hover ${
-                      selectedTopic === t.topicName
-                        ? 'border-brand-teal ring-2 ring-brand-teal/20 shadow-md'
-                        : 'border-border-default hover:border-brand-teal/40'
+                    onClick={() => handleSelectTopic(t.topicName)}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer shadow-card hover:shadow-card-hover ${
+                      isSelected
+                        ? 'bg-brand-teal/10 border-brand-teal ring-2 ring-brand-teal/20'
+                        : 'bg-bg-surface border-border-default hover:border-brand-teal/40'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <h4 className="text-sm font-bold text-text-primary truncate">
+                      <h4 className="text-xs sm:text-sm font-bold text-text-primary truncate">
                         {t.topicName}
                       </h4>
                       <span className="text-xs font-bold text-brand-teal shrink-0">
@@ -1056,7 +1067,7 @@ export default function DsaTrackerPage() {
                       </span>
                     </div>
 
-                    <div className="mt-3 w-full h-2 rounded-full bg-bg-surface-elevated overflow-hidden border border-border-default/40">
+                    <div className="mt-3 w-full h-2 rounded-full bg-bg-surface-elevated overflow-hidden border border-border-subtle">
                       <div
                         style={{ width: `${completion}%` }}
                         className="h-full bg-brand-teal rounded-full transition-all duration-300"
@@ -1080,13 +1091,13 @@ export default function DsaTrackerPage() {
             <Card>
               <CardHeader className="flex items-center justify-between">
                 <div>
-                  <CardTitle>{selectedTopic} Problems</CardTitle>
-                  <CardDescription>
+                  <CardTitle className="text-base font-bold">{selectedTopic} Problem Set</CardTitle>
+                  <CardDescription className="text-xs">
                     Drill-down problem set and practice history for {selectedTopic}
                   </CardDescription>
                 </div>
                 <Button
-                  size="sm"
+                  size="xs"
                   variant="primary"
                   onClick={() => {
                     setEditingProblem({ primaryTopic: selectedTopic });
@@ -1096,7 +1107,7 @@ export default function DsaTrackerPage() {
                   + Add to {selectedTopic}
                 </Button>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 pt-1">
                 {loadingTopicProblems ? (
                   <div className="py-8 text-center text-text-muted text-xs">
                     Loading topic problems...
@@ -1129,7 +1140,7 @@ export default function DsaTrackerPage() {
 
                         <div className="flex items-center gap-2">
                           <Button
-                            size="sm"
+                            size="xs"
                             variant="secondary"
                             onClick={() => {
                               setTargetProblemForAttempt(p);
@@ -1155,7 +1166,7 @@ export default function DsaTrackerPage() {
       {currentTab === 'revisions' && (
         <div className="space-y-4">
           {/* Sub Tabs for Revisions */}
-          <div className="flex gap-2 border-b border-border-default pb-2">
+          <div className="flex gap-2 border-b border-border-default pb-2 overflow-x-auto">
             {[
               { id: 'pending', label: 'All Pending', count: revisionsQueue.totalPendingCount },
               { id: 'overdue', label: 'Overdue', count: revisionsQueue.overdueCount, alert: true },
@@ -1169,9 +1180,9 @@ export default function DsaTrackerPage() {
                   key={sub.id}
                   type="button"
                   onClick={() => setRevisionFilter(sub.id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
                     isActive
-                      ? 'bg-brand-teal text-white shadow-sm'
+                      ? 'bg-brand-teal text-white shadow-xs font-bold'
                       : 'bg-bg-surface text-text-secondary border border-border-default hover:text-text-primary'
                   }`}
                 >
@@ -1274,7 +1285,7 @@ export default function DsaTrackerPage() {
                           <div className="flex items-center gap-2 shrink-0">
                             {rev.status === 'PENDING' && (
                               <Button
-                                size="sm"
+                                size="xs"
                                 variant="primary"
                                 onClick={() => handleCompleteRevision(rev.id)}
                               >
@@ -1317,8 +1328,8 @@ export default function DsaTrackerPage() {
             {/* Difficulty Donut Chart */}
             <Card>
               <CardHeader>
-                <CardTitle>Difficulty Breakdown</CardTitle>
-                <CardDescription>Distribution of tracked problems by difficulty tier</CardDescription>
+                <CardTitle className="text-base font-bold">Difficulty Breakdown</CardTitle>
+                <CardDescription className="text-xs">Distribution of tracked problems by difficulty tier</CardDescription>
               </CardHeader>
               <CardContent>
                 <DifficultyDonutChart difficultyData={difficultyAnalytics} />
@@ -1328,8 +1339,8 @@ export default function DsaTrackerPage() {
             {/* 14-Day Activity Bar Chart */}
             <Card>
               <CardHeader>
-                <CardTitle>14-Day Activity Timeline</CardTitle>
-                <CardDescription>Daily solving attempts and completed problems</CardDescription>
+                <CardTitle className="text-base font-bold">14-Day Activity Timeline</CardTitle>
+                <CardDescription className="text-xs">Daily solving attempts and completed problems</CardDescription>
               </CardHeader>
               <CardContent>
                 <ActivityTimelineBarChart timelineData={activityTimeline} />
@@ -1403,4 +1414,3 @@ export default function DsaTrackerPage() {
     </div>
   );
 }
-

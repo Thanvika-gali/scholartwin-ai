@@ -4,6 +4,7 @@ import com.aischolartwin.dto.KnowledgeItemRequest;
 import com.aischolartwin.dto.KnowledgeItemResponse;
 import com.aischolartwin.entity.KnowledgeItem;
 import com.aischolartwin.entity.KnowledgeItemType;
+import com.aischolartwin.entity.ResourceType;
 import com.aischolartwin.entity.User;
 import com.aischolartwin.exception.InvalidPayloadException;
 import com.aischolartwin.exception.ResourceNotFoundException;
@@ -32,6 +33,7 @@ public class KnowledgeItemService {
     private final UserRepository userRepository;
     private final KnowledgeOrganizationService organizationService;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public KnowledgeItemService(
         KnowledgeItemRepository knowledgeItemRepository,
         UserRepository userRepository,
